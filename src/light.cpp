@@ -31,16 +31,13 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
     // TODO: implement this function.
-    glm::vec3 pointHit = ray.origin + ray.direction * ray.t;
+    glm::vec3 pointHit = ray.origin + ray.direction * (ray.t - 0.001f);
     glm::vec3 pointToLight = glm::normalize(samplePos - pointHit);
 
     float expectedT = glm::length(samplePos - pointHit);
-    //Ray toLight = {pointHit, pointToLight, 0};
     Ray toLight = {pointHit, pointToLight, expectedT};
     bvh.intersect(toLight, hitInfo, features);
 
-//    glm::vec3 x = (toLight.origin + toLight.direction * toLight.t) - samplePos;
-//    if(x.x > 0.01 || x.y > 0.01 || x.z > 0.01) return 0.0;
     if(abs(expectedT - toLight.t) > 0.001) return 0.0;
     return 1.0;
 }
@@ -80,11 +77,9 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
 // loadScene function in scene.cpp). Custom lights will not be visible in rasterization view.
 glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
-
     if (features.enableShading) {
         // If shading is enabled, compute the contribution from all lights.
         for (const auto& light : scene.lights) {
-
             bvh.intersect(ray, hitInfo, features);
 
             if (std::holds_alternative<PointLight>(light)) {
@@ -95,8 +90,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 if(features.enableHardShadow && testVisibilityLightSample(pointLight.position, color, bvh, features, ray, hitInfo) == 0.0) {
                     return glm::vec3{0.0f};
                 }
-                return hitInfo.material.kd;
 
+                // I returned the default color here until normal shadows are solved
+                return hitInfo.material.kd;
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
                 // Perform your calculations for a segment light.
@@ -107,9 +103,21 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 return computeShading(parallelogramLight.edge01 * parallelogramLight.edge02, parallelogramLight.color0 + parallelogramLight.color1 + parallelogramLight.color2 + parallelogramLight.color3, features, ray, hitInfo);
             }
         }
-
     } else {
-        // If shading is disabled, return the albedo of the material.
-        return hitInfo.material.kd;
+        for (const auto& light : scene.lights) {
+            bvh.intersect(ray, hitInfo, features);
+
+            if (std::holds_alternative<PointLight>(light)) {
+                const PointLight pointLight = std::get<PointLight>(light);
+                // Perform your calculations for a point light.
+
+                if (features.enableHardShadow && testVisibilityLightSample(pointLight.position, pointLight.color, bvh, features, ray, hitInfo) == 0.0) {
+                    return glm::vec3 { 0.0f };
+                }
+
+                // I returned the default color here until normal shadows are solved
+                return hitInfo.material.kd;
+            }
+        }
     }
 }
