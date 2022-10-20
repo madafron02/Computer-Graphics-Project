@@ -6,7 +6,7 @@
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
 {
     // TODO: implement the Phong shading model.
-    glm::vec3 result = hitInfo.material.kd * lightColor * glm::max(0.0f, glm::dot(hitInfo.normal, normalize(lightPosition - hitInfo.normal)));
+    glm::vec3 result = hitInfo.material.kd * lightColor * glm::max(0.0f, glm::dot(hitInfo.normal, normalize(lightPosition - hitInfo.barycentricCoord)));
     
     return result;
 }
