@@ -31,6 +31,13 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& debugColor, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
     // TODO: implement this function.
+    glm::vec3 pointHit = ray.origin + ray.direction * ray.t;
+    glm::vec3 pointToLight = glm::normalize(samplePos - pointHit);
+    float expectedT = (samplePos.x - pointHit.x) / pointToLight.x;
+    Ray toLight = {pointHit, pointToLight, expectedT};
+    bvh.intersect(toLight, hitInfo, features);
+
+    if(expectedT != toLight.t) return 0.0;
     return 1.0;
 }
 
@@ -74,6 +81,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
         for (const auto& light : scene.lights) {
             if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
+                if(features.enableHardShadow && testVisibilityLightSample(pointLight.position, pointLight.color, bvh, features, ray, hitInfo) == 0.0) {
+                    return glm::vec3{0.0f};
+                }
                 // Perform your calculations for a point light.
                 return computeShading(pointLight.position, pointLight.color, features, ray, hitInfo);
             } else if (std::holds_alternative<SegmentLight>(light)) {
