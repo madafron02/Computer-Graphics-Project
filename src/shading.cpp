@@ -7,12 +7,16 @@
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
 {
     // TODO: implement the Phong shading model.
-    glm::vec3 lightVec = normalize(lightPosition - (ray.origin + ray.t * ray.direction));
-    glm::vec3 diffuse = lightColor * hitInfo.material.kd * glm::max(0.0f, glm::dot(lightVec, hitInfo.normal));
+    glm::vec3 cameraToPoint = ray.origin + ray.t * ray.direction;
+    glm::vec3 cameraToLight = lightPosition;
 
-    glm::vec3 viewVec = normalize(ray.origin - (ray.origin + ray.t * ray.direction));
-    glm::vec3 reflected = normalize(glm::reflect(glm::vec3 { -1, -1, -1 }  *lightVec, hitInfo.normal));
-    glm::vec3 specular = lightColor * hitInfo.material.ks * pow(glm::max(0.0f, glm::dot(reflected, viewVec)), hitInfo.material.shininess);
+    glm::vec3 pointToLight = cameraToLight - cameraToPoint;
+    glm::vec3 diffuse = lightColor * hitInfo.material.kd * glm::max(0.0f, glm::dot(hitInfo.normal, normalize(pointToLight)));
+
+    glm::vec3 viewVec = cameraToPoint - ray.origin;
+    glm::vec3 lightVec = lightPosition - cameraToPoint;
+    glm::vec3 reflected = normalize(- normalize(lightVec) + 2 * (glm::dot(normalize(lightVec), hitInfo.normal)) * hitInfo.normal);
+    glm::vec3 specular = lightColor * hitInfo.material.ks * pow(glm::max(0.0f, glm::dot(normalize(viewVec), reflected)), hitInfo.material.shininess);
 
     return diffuse + specular;
 }
