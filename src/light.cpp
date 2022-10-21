@@ -77,6 +77,8 @@ float testVisibilityLightSample(const glm::vec3& samplePos, const glm::vec3& deb
 // loadScene function in scene.cpp). Custom lights will not be visible in rasterization view.
 glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, const Features& features, Ray ray, HitInfo hitInfo)
 {
+    bvh.intersect(ray, hitInfo, features);
+
     if (features.enableShading) {
         // If shading is enabled, compute the contribution from all lights.
         for (const auto& light : scene.lights) {
