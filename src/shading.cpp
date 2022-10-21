@@ -6,6 +6,10 @@
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
 {
     // TODO: implement the Phong shading model.
+    //if(length(hitInfo.material.kd) <= 0.0000001f) return hitInfo.material.kd;
+
+    //check for mirrors !!!
+
     glm::vec3 cameraToPoint = ray.origin + ray.t * ray.direction;
     glm::vec3 cameraToLight = lightPosition;
 
