@@ -2,7 +2,6 @@
 #include <cmath>
 #include <glm/geometric.hpp>
 #include <shading.h>
-#include <iostream>
 
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
 {
