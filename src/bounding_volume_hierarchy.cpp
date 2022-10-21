@@ -76,11 +76,14 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         // find min max
         std::sort(axisCoords.begin(), axisCoords.end());
         float median = 0;
-        if (axisCoords.size() % 2 == 1)
-            median = axisCoords[(axisCoords.size() - 1) / 2];
-        else
-            median = axisCoords[axisCoords.size() / 2];
-
+        {
+            int len = axisCoords.size();
+            if (len % 2 == 1)
+                median = axisCoords[(int)(len / 2)];
+            else
+                median = axisCoords[(len / 2) - 1];
+        }
+        
         // if level not too big then we divide
         std::vector<std::tuple<int, int>> indexesLeft;
         std::vector<std::tuple<int, int>> indexesRight;
@@ -113,8 +116,11 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
             createdNodes.emplace_back(right);
         }
        
-        n.indexes.clear();
-        n.indexes.push_back(std::make_tuple(left_idx, right_idx));
+        // IMPORTANT: make sure n is still referencing the same node
+        // to do that we create n_copy
+        Node& n_copy = createdNodes.at(n_idx);
+        n_copy.indexes.clear();
+        n_copy.indexes.push_back(std::make_tuple(left_idx, right_idx));
     }
 }
 
