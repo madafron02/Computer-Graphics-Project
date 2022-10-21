@@ -99,8 +99,10 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 
         // create new nodes
         int divisionAxis = (n.divisionAxis + 1) % 3;
-        Node left = { glm::vec3 {}, glm::vec3 {}, indexesLeft, divisionAxis, n.level + 1 };
-        Node right = { glm::vec3 {}, glm::vec3 {}, indexesRight, divisionAxis, n.level + 1 };
+        glm::vec3 n_min = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
+        glm::vec3 n_max = { std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest() };
+        Node left = { n_min, n_max, indexesLeft, divisionAxis, n.level + 1 };
+        Node right = { n_min, n_max, indexesRight, divisionAxis, n.level + 1 };
 
         // store them in the list and update current node's index
         int left_idx = -1;
@@ -170,22 +172,22 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
 
     // Draw the AABB as a (white) wireframe box.
-    AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
+    //AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
     //drawAABB(aabb, DrawMode::Wireframe);
-    drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+    //drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 
     for (auto n : createdNodes) {
         if (n.isLeaf && n.leafNumber == leafIdx) {
             AxisAlignedBox aabb { n.min, n.max };
             drawAABB(aabb, DrawMode::Wireframe);
 
-            /*for (const std::tuple<int, int>& t : n.indexes) {
+            for (const std::tuple<int, int>& t : n.indexes) {
                 int mesh_idx = std::get<0>(t);
 
                 auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
                 auto vertices = getTriangleVertices(mesh_idx, triangle);
                 drawTriangle(vertices.at(0), vertices.at(1), vertices.at(2));
-            }*/
+            }
             break;
         }
     }
