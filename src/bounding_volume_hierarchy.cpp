@@ -4,69 +4,75 @@
 #include "intersect.h"
 #include "scene.h"
 #include "texture.h"
+#include <limits>
 #include <queue>
 #include <glm/glm.hpp>
 
-struct Node {
-    glm::vec3 min;
-    glm::vec3 max;
-    std::vector<std::tuple<int, int>> indexes;
-    int divisionAxis = 0; // x = 0, y = 1, z = 2
-    int level = -1;
-    bool isLeaf;
-};
+
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
-    int desiredLevel = 5;
-    std::vector<Node> createdNodes;
+    int desiredLevel = 8;
     Node root;
-    createdNodes.emplace_back(root);
     // distribute world triangles
-    for (int i = 0; i < pScene->meshes.size(); ++i) {
-        for (int j = 0; j < pScene->meshes.at(i).vertices.size(); ++j) {
+    for (int i = 0; i < m_pScene->meshes.size(); ++i) {
+        for (int j = 0; j < m_pScene->meshes.at(i).triangles.size(); ++j) {
             root.indexes.push_back(std::make_tuple(i, j));
         }
     }
-    std::vector<std::tuple<int, int>> triangles;
 
-    std::queue<Node> toDivide;
-    toDivide.push(root);
+    std::queue<int> toDivide;
+    createdNodes.emplace_back(root);
+    toDivide.push(0);
 
-    int divisionAxis = 0;
     while (!toDivide.empty()) {
-        Node n = toDivide.front();
+        int n_idx = toDivide.front();
         toDivide.pop();
 
+        Node& n = createdNodes.at(n_idx);
+
+        std::vector<float> axisCoords;
+        for (auto t : n.indexes) {
+            int mesh_idx = std::get<0>(t);
+            auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
+            
+            // TODO: potential optimization:
+            // get all vertices before looping over them, so that calculating the same vertex
+            // multiple times can be avoided
+            auto vertices = getTriangleVertices(mesh_idx, triangle);
+            for (auto v : vertices) {
+                if (v.position.x < n.min.x)
+                    n.min.x = v.position.x;
+                if (v.position.x > n.max.x)
+                    n.max.x = v.position.x;
+
+                if (v.position.y < n.min.y)
+                    n.min.y = v.position.y;
+                if (v.position.y > n.max.y)
+                    n.max.y = v.position.y;
+
+                if (v.position.z < n.min.z)
+                    n.min.z = v.position.z;
+                if (v.position.z > n.max.z)
+                    n.max.z = v.position.z;
+            }
+            
+            // find division median
+            Vertex coords = computeCentroid(std::get<0>(t), triangle);
+            axisCoords.push_back(coords.position[n.divisionAxis]);
+        }
+
+        // if it's a leaf
         if (n.level >= desiredLevel || n.indexes.size() < 2) {
+            // we quit calculations at this point
             n.isLeaf = true;
+            n.leafNumber = m_numLeaves;
+            ++m_numLeaves;
             continue;
         }
 
         // The node is not a leaf
-        std::vector<float> axisCoords;
-        for (auto t : n.indexes) {
-            auto coords = pScene->meshes.at(std::get<0>(t)).vertices.at(std::get<1>(t));
-            if (coords.position.x < n.min.x)
-                n.min.x = coords.position.x;
-            else if (coords.position.x > n.max.x)
-                n.max.x = coords.position.x;
-
-            if (coords.position.y < n.min.y)
-                n.min.y = coords.position.y;
-            else if (coords.position.y > n.max.y)
-                n.max.y = coords.position.y;
-
-            if (coords.position.z < n.min.z)
-                n.min.z = coords.position.z;
-            else if (coords.position.z > n.max.z)
-                n.max.z = coords.position.z;
-
-            // find division median
-            axisCoords.push_back(coords.position[n.divisionAxis*3]);
-        }
-
         // find min max
         std::sort(axisCoords.begin(), axisCoords.end());
         float median = 0;
@@ -78,26 +84,37 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         // if level not too big then we divide
         std::vector<std::tuple<int, int>> indexesLeft;
         std::vector<std::tuple<int, int>> indexesRight;
-        for (auto t : triangles) {
-            auto triangle = pScene->meshes.at(std::get<0>(t)).vertices.at(std::get<1>(t));
-            if (triangle.position[n.divisionAxis*3] <= median)
+        for (auto t : n.indexes) {
+            auto triangle = m_pScene->meshes.at(std::get<0>(t)).triangles.at(std::get<1>(t));
+            Vertex coords = computeCentroid(std::get<0>(t), triangle);
+
+            if (coords.position[n.divisionAxis] <= median)
                 indexesLeft.push_back(t);
             else
                 indexesRight.push_back(t);
         }
 
         // create new nodes
-        divisionAxis = (divisionAxis + 1) % 2;
+        int divisionAxis = (n.divisionAxis + 1) % 3;
         Node left = { glm::vec3 {}, glm::vec3 {}, indexesLeft, divisionAxis, n.level + 1 };
         Node right = { glm::vec3 {}, glm::vec3 {}, indexesRight, divisionAxis, n.level + 1 };
 
         // store them in the list and update current node's index
-        toDivide.push(left);
-        toDivide.push(right);
+        int left_idx = -1;
+        int right_idx = -1;
+        if (indexesLeft.size() > 0) {
+            left_idx = createdNodes.size();
+            toDivide.push(left_idx);
+            createdNodes.emplace_back(left);
+        }
+        if (indexesRight.size() > 0) {
+            right_idx = createdNodes.size();
+            toDivide.push(right_idx);
+            createdNodes.emplace_back(right);
+        }
+       
         n.indexes.clear();
-        n.indexes.emplace_back(std::make_tuple(createdNodes.size(), createdNodes.size() + 1));
-        createdNodes.emplace_back(left);
-        createdNodes.emplace_back(right);
+        n.indexes.push_back(std::make_tuple(left_idx, right_idx));
     }
 }
 
@@ -105,14 +122,14 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 // slider in the UI how many steps it should display for Visual Debug 1.
 int BoundingVolumeHierarchy::numLevels() const
 {
-    return 1;
+    return createdNodes.back().level + 1;
 }
 
 // Return the number of leaf nodes in the tree that you constructed. This is used to tell the
 // slider in the UI how many steps it should display for Visual Debug 2.
 int BoundingVolumeHierarchy::numLeaves() const
 {
-    return 1;
+    return m_numLeaves;
 }
 
 // Use this function to visualize your BVH. This is useful for debugging. Use the functions in
@@ -125,9 +142,15 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
     //drawShape(aabb, DrawMode::Filled, glm::vec3(0.0f, 1.0f, 0.0f), 0.2f);
 
     // Draw the AABB as a (white) wireframe box.
-    AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
-    //drawAABB(aabb, DrawMode::Wireframe);
-    drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+    for (const auto& n : createdNodes) {
+        if (n.level != level)
+            continue;
+
+        AxisAlignedBox aabb { n.min, n.max };
+        drawAABB(aabb, DrawMode::Wireframe);
+    }
+    
+    //drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 }
 
 // Use this function to visualize your leaf nodes. This is useful for debugging. The function
@@ -144,6 +167,22 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     AxisAlignedBox aabb { glm::vec3(0.0f), glm::vec3(0.0f, 1.05f, 1.05f) };
     //drawAABB(aabb, DrawMode::Wireframe);
     drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
+
+    for (auto n : createdNodes) {
+        if (n.isLeaf && n.leafNumber == leafIdx) {
+            AxisAlignedBox aabb { n.min, n.max };
+            drawAABB(aabb, DrawMode::Wireframe);
+
+            /*for (const std::tuple<int, int>& t : n.indexes) {
+                int mesh_idx = std::get<0>(t);
+
+                auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
+                auto vertices = getTriangleVertices(mesh_idx, triangle);
+                drawTriangle(vertices.at(0), vertices.at(1), vertices.at(2));
+            }*/
+            break;
+        }
+    }
 
     // once you find the leaf node, you can use the function drawTriangle (from draw.h) to draw the contained primitives
 }
@@ -179,4 +218,30 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
         return false;
     }
+}
+
+Vertex BoundingVolumeHierarchy::computeCentroid(int mesh, glm::uvec3 triangle)
+{
+    Vertex A = m_pScene->meshes.at(mesh).vertices.at(triangle.x);
+    Vertex B = m_pScene->meshes.at(mesh).vertices.at(triangle.y);
+    Vertex C = m_pScene->meshes.at(mesh).vertices.at(triangle.z);
+
+    glm::vec3 position { (A.position.x + B.position.x + C.position.x) / 3.0f,
+                         (A.position.y + B.position.y + C.position.y) / 3.0f,
+                         (A.position.z + B.position.z + C.position.z) / 3.0f };
+    return { position, glm::vec3 {}, glm::vec2 {} };
+}
+
+std::vector<Vertex> BoundingVolumeHierarchy::getTriangleVertices(int mesh, glm::uvec3 triangle)
+{
+    Vertex A = m_pScene->meshes.at(mesh).vertices.at(triangle.x);
+    Vertex B = m_pScene->meshes.at(mesh).vertices.at(triangle.y);
+    Vertex C = m_pScene->meshes.at(mesh).vertices.at(triangle.z);
+
+    std::vector<Vertex> answer;
+    answer.emplace_back(A);
+    answer.emplace_back(B);
+    answer.emplace_back(C);
+
+    return answer;
 }
