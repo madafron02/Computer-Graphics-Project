@@ -13,7 +13,7 @@
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
-    int desiredLevel = 8;
+    int desiredLevel = 10;
     Node root;
     // distribute world triangles
     for (int i = 0; i < m_pScene->meshes.size(); ++i) {
