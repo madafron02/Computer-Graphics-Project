@@ -99,8 +99,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 
         // create new nodes
         int divisionAxis = (n.divisionAxis + 1) % 3;
-        glm::vec3 n_min = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
-        glm::vec3 n_max = { std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest() };
+        glm::vec3 n_min = { FLOAT_MAX, FLOAT_MAX, FLOAT_MAX };
+        glm::vec3 n_max = { FLOAT_MIN, FLOAT_MIN, FLOAT_MIN };
         Node left = { n_min, n_max, indexesLeft, divisionAxis, n.level + 1 };
         Node right = { n_min, n_max, indexesRight, divisionAxis, n.level + 1 };
 
@@ -157,8 +157,6 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
         AxisAlignedBox aabb { n.min, n.max };
         drawAABB(aabb, DrawMode::Wireframe);
     }
-    
-    //drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 }
 
 // Use this function to visualize your leaf nodes. This is useful for debugging. The function
@@ -191,8 +189,6 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
             break;
         }
     }
-
-    // once you find the leaf node, you can use the function drawTriangle (from draw.h) to draw the contained primitives
 }
 
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored

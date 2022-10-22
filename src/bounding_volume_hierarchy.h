@@ -34,14 +34,17 @@ private:
     std::vector<Vertex> getTriangleVertices(int mesh, glm::uvec3 triangle);
 
     struct Node {
-        glm::vec3 min = { std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max() };
-        glm::vec3 max = { std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest() };
+        glm::vec3 min = { FLOAT_MAX, FLOAT_MAX, FLOAT_MAX };
+        glm::vec3 max = { FLOAT_MIN, FLOAT_MIN, FLOAT_MIN };
         std::vector<std::tuple<int, int>> indexes;
         int divisionAxis = 0; // x = 0, y = 1, z = 2
         int level = 0;
         bool isLeaf = false;
         int leafNumber = -1;
     };
+
+    static constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
+    static constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
 
     std::vector<Node> createdNodes;
     int m_numLevels { 0 };
