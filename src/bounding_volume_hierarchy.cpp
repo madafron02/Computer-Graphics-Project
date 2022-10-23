@@ -42,7 +42,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
             // get all vertices before looping over them, so that calculating the same vertex
             // multiple times can be avoided
             auto vertices = getTriangleVertices(mesh_idx, triangle);
-            for (auto v : vertices) {
+            for (auto& v : vertices) {
                 if (v.position.x < n.min.x)
                     n.min.x = v.position.x;
                 if (v.position.x > n.max.x)
@@ -86,17 +86,9 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         }
         
         // if level not too big then we divide
-        std::vector<std::tuple<int, int>> indexesLeft;
-        std::vector<std::tuple<int, int>> indexesRight;
-        for (auto t : n.indexes) {
-            auto triangle = m_pScene->meshes.at(std::get<0>(t)).triangles.at(std::get<1>(t));
-            Vertex coords = computeCentroid(std::get<0>(t), triangle);
-
-            if (coords.position[n.divisionAxis] <= median)
-                indexesLeft.push_back(t);
-            else
-                indexesRight.push_back(t);
-        }
+        IndexTuple indexesLeft;
+        IndexTuple indexesRight;
+        splitTrianglesByAxisAndThreshold(n.indexes, n.divisionAxis, median, indexesLeft, indexesRight);
 
         // create new nodes
         int divisionAxis = (n.divisionAxis + 1) % 3;
@@ -250,4 +242,17 @@ std::vector<Vertex> BoundingVolumeHierarchy::getTriangleVertices(int mesh, glm::
     answer.emplace_back(C);
 
     return answer;
+}
+
+void BoundingVolumeHierarchy::splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right)
+{
+    for (auto t : indexes) {
+        auto triangle = m_pScene->meshes.at(std::get<0>(t)).triangles.at(std::get<1>(t));
+        Vertex coords = computeCentroid(std::get<0>(t), triangle);
+
+        if (coords.position[axis] <= threshold)
+            left.push_back(t);
+        else
+            right.push_back(t);
+    }
 }
