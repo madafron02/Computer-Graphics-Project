@@ -92,9 +92,7 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 if(features.enableHardShadow && testVisibilityLightSample(pointLight.position, color, bvh, features, ray, hitInfo) == 0.0) {
                     return glm::vec3{0.0f};
                 }
-
-                // I returned the default color here until normal shadows are solved
-                return hitInfo.material.kd;
+                return color;
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
                 // Perform your calculations for a segment light.
@@ -108,18 +106,25 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
     } else {
         for (const auto& light : scene.lights) {
             bvh.intersect(ray, hitInfo, features);
+            glm::vec3 color = hitInfo.material.kd;
 
-            if (std::holds_alternative<PointLight>(light)) {
+        if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
                 // Perform your calculations for a point light.
-
                 if (features.enableHardShadow && testVisibilityLightSample(pointLight.position, pointLight.color, bvh, features, ray, hitInfo) == 0.0) {
                     return glm::vec3 { 0.0f };
                 }
-
-                // I returned the default color here until normal shadows are solved
-                return hitInfo.material.kd;
+                return color;
+            } else if (std::holds_alternative<SegmentLight>(light)) {
+                const SegmentLight segmentLight = std::get<SegmentLight>(light);
+                // Perform your calculations for a segment light.
+                return color;
+            } else if (std::holds_alternative<ParallelogramLight>(light)) {
+                const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
+                // Perform your calculations for a parallelogram light.
+                return color;
             }
         }
+
     }
 }

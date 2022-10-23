@@ -57,14 +57,13 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         if(features.enableShading) {
             drawRay(ray, Lo);
             drawShadowRays(scene, ray, bvh, hitInfo, features);
-            return Lo;
+
         } else {
             drawRay(ray, glm::vec3{1.0f});
             drawShadowRays(scene, ray, bvh, hitInfo, features);
-            return glm::vec3{1.0f};
-        }
-        // Set the color of the pixel to white if the ray hits.
 
+        }
+        return Lo;
     } else {
         // Draw a red debug ray if the ray missed.
         drawRay(ray, glm::vec3(1.0f, 0.0f, 0.0f));
