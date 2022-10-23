@@ -30,7 +30,7 @@ const Ray computeReflectionRay (Ray ray, HitInfo hitInfo)
     // Do NOT use glm::reflect!! write your own code.
     Ray reflectionRay = ray;
     // TODO: implement the reflection ray computation.
+    reflectionRay.direction = normalize(normalize(ray.direction * ray.t) - 2 * glm::dot(normalize(ray.direction*ray.t), hitInfo.normal) * hitInfo.normal);
     reflectionRay.origin = ray.origin + ray.t * ray.direction;
-    reflectionRay.direction = ray.direction - 2 * glm::dot(ray.direction, hitInfo.normal) * hitInfo.normal;
     return reflectionRay;
 }

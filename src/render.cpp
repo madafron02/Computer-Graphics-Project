@@ -8,6 +8,7 @@
 #endif
 #include <iostream>
 
+
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features) {
     if(features.enableHardShadow) {
         for (const auto& light : scene.lights) {
@@ -38,31 +39,41 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        if (features.enableRecursive) {
-            //bvh.intersect(ray, hitInfo, features);
-            //Ray reflected;
-            //glm::vec3 reflectedColor;
-            //if (rayDepth > -1 && hitInfo.material.ks != glm::vec3 {0,0,0}) { 
-            //reflected = computeReflectionRay(ray, hitInfo);
-            //reflectedColor = getFinalColor(scene, bvh, reflected, features, rayDepth - 1);
-            //drawRay(reflected, Lo + reflected.t * reflectedColor);
-            // 
-            //}
-
-           
-        }
-        drawRay(ray, Lo);
 
         // Draw a coloured ray if shading is enabled, else white ray (if it hits).
-        if(features.enableShading) {
+        if (features.enableShading) {
             drawRay(ray, Lo);
             drawShadowRays(scene, ray, bvh, hitInfo, features);
 
         } else {
-            drawRay(ray, glm::vec3{1.0f});
+            drawRay(ray, glm::vec3 { 1.0f });
             drawShadowRays(scene, ray, bvh, hitInfo, features);
-
         }
+
+
+        if (features.enableRecursive && rayDepth < 10 && (hitInfo.material.ks.x> 0 || hitInfo.material.ks.y > 0 || hitInfo.material.ks.z > 0)) {
+
+            Ray reflected = computeReflectionRay(ray, hitInfo);
+            glm::vec3 ligthReflection = glm::vec3 { 0, 0, 0 };
+
+            reflected.origin += hitInfo.normal * std::numeric_limits<float>::epsilon();
+            ;
+            if (bvh.intersect(reflected, hitInfo, features)) {
+
+
+                ligthReflection = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
+                if (features.enableRecursive) {
+                    drawRay(reflected, ligthReflection);
+                }
+            } else {
+                if (features.enableRecursive) {
+                    drawRay(reflected, { 1, 0, 0 });
+                }
+            }
+
+            return Lo + ligthReflection;
+        }
+        
         return Lo;
     } else {
         // Draw a red debug ray if the ray missed.
