@@ -34,11 +34,13 @@ private:
 
     Vertex computeCentroid(int mesh, glm::uvec3 triangle);
     std::vector<Vertex> getTriangleVertices(int mesh, glm::uvec3 triangle);
+    AxisAlignedBox getAABBFromTriangles(const IndexTuple& indexes);
+    float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
     void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
 
     struct Node {
-        glm::vec3 min = { FLOAT_MAX, FLOAT_MAX, FLOAT_MAX };
-        glm::vec3 max = { FLOAT_MIN, FLOAT_MIN, FLOAT_MIN };
+        glm::vec3 min = VEC_OF_MAXS;
+        glm::vec3 max = VEC_OF_MINS;
         IndexTuple indexes;
         int divisionAxis = 0; // x = 0, y = 1, z = 2
         int level = 0;
@@ -48,6 +50,8 @@ private:
 
     static constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
     static constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
+    static constexpr glm::vec3 VEC_OF_MINS { FLOAT_MIN, FLOAT_MIN, FLOAT_MIN };
+    static constexpr glm::vec3 VEC_OF_MAXS { FLOAT_MAX, FLOAT_MAX, FLOAT_MAX };
 
     std::vector<float> splitBins;
     std::vector<Node> createdNodes;

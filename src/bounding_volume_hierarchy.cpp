@@ -33,36 +33,9 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 
         Node& n = createdNodes.at(n_idx);
 
-        std::vector<float> axisCoords;
-        for (auto t : n.indexes) {
-            int mesh_idx = std::get<0>(t);
-            auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
-            
-            // TODO: potential optimization:
-            // get all vertices before looping over them, so that calculating the same vertex
-            // multiple times can be avoided
-            auto vertices = getTriangleVertices(mesh_idx, triangle);
-            for (auto& v : vertices) {
-                if (v.position.x < n.min.x)
-                    n.min.x = v.position.x;
-                if (v.position.x > n.max.x)
-                    n.max.x = v.position.x;
-
-                if (v.position.y < n.min.y)
-                    n.min.y = v.position.y;
-                if (v.position.y > n.max.y)
-                    n.max.y = v.position.y;
-
-                if (v.position.z < n.min.z)
-                    n.min.z = v.position.z;
-                if (v.position.z > n.max.z)
-                    n.max.z = v.position.z;
-            }
-            
-            // find division median
-            Vertex coords = computeCentroid(std::get<0>(t), triangle);
-            axisCoords.push_back(coords.position[n.divisionAxis]);
-        }
+        AxisAlignedBox aabb = getAABBFromTriangles(n.indexes);
+        n.min = aabb.lower;
+        n.max = aabb.upper;
 
         // if it's a leaf
         if (n.level >= desiredLevel || n.indexes.size() < 2) {
@@ -74,16 +47,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
         }
 
         // The node is not a leaf
-        // find min max
-        std::sort(axisCoords.begin(), axisCoords.end());
-        float median = 0;
-        {
-            int len = axisCoords.size();
-            if (len % 2 == 1)
-                median = axisCoords[(int)(len / 2)];
-            else
-                median = axisCoords[(len / 2) - 1];
-        }
+        float median = findTrianglesAxisMedian(n.indexes, n.divisionAxis);
         
         // if level not too big then we divide
         IndexTuple indexesLeft;
@@ -242,6 +206,72 @@ std::vector<Vertex> BoundingVolumeHierarchy::getTriangleVertices(int mesh, glm::
     answer.emplace_back(C);
 
     return answer;
+}
+
+AxisAlignedBox BoundingVolumeHierarchy::getAABBFromTriangles(const IndexTuple& indexes)
+{
+    AxisAlignedBox answer;
+    answer.lower = VEC_OF_MAXS;
+    answer.upper = VEC_OF_MINS;
+    
+    for (const auto& t : indexes) {
+        int mesh_idx = std::get<0>(t);
+        const auto& triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
+
+        // TODO: potential optimization:
+        // get all vertices before looping over them, so that calculating the same vertex
+        // multiple times can be avoided
+        auto vertices = getTriangleVertices(mesh_idx, triangle);
+        for (const auto& v : vertices) {
+            if (v.position.x < answer.lower.x)
+                answer.lower.x = v.position.x;
+            if (v.position.x > answer.upper.x)
+                answer.upper.x = v.position.x;
+
+            if (v.position.y < answer.lower.y)
+                answer.lower.y = v.position.y;
+            if (v.position.y > answer.upper.y)
+                answer.upper.y = v.position.y;
+
+            if (v.position.z < answer.lower.z)
+                answer.lower.z = v.position.z;
+            if (v.position.z > answer.upper.z)
+                answer.upper.z = v.position.z;
+        }
+    }
+
+    return answer;
+}
+
+float BoundingVolumeHierarchy::findTrianglesAxisMedian(const IndexTuple& indexes, int axis)
+{
+    if (indexes.size() < 1)
+        return 0.0f;
+
+    std::vector<float> coords;
+
+    for (auto t : indexes) {
+        int mesh_idx = std::get<0>(t);
+        auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
+
+        Vertex centroid = computeCentroid(std::get<0>(t), triangle);
+        coords.push_back(centroid.position[axis]);
+    }
+
+    if (coords.size() == 1)
+        return coords.at(0);
+
+    std::sort(coords.begin(), coords.end());
+    float median = 0;
+    {
+        int len = coords.size();
+        if (len % 2 == 1)
+            median = coords[(int)(len / 2)];
+        else
+            median = coords[(len / 2) - 1];
+    }
+
+    return median;
 }
 
 void BoundingVolumeHierarchy::splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right)
