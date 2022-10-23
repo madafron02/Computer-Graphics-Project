@@ -12,8 +12,30 @@ DISABLE_WARNINGS_POP()
 // you should fill in the vectors position and color with the sampled position and color
 void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color)
 {
-    position = glm::vec3(0.0);
-    color = glm::vec3(0.0);
+
+    if (position == segmentLight.endpoint0) {
+        color = segmentLight.color0;
+        return;
+    }
+
+    if (position == segmentLight.endpoint1) {
+        color = segmentLight.color1;
+        return;
+    }
+
+    if (segmentLight.endpoint0.x < position.x < segmentLight.endpoint1.x && segmentLight.endpoint0.y < position.y < segmentLight.endpoint1.y && segmentLight.endpoint0.z < position.z < segmentLight.endpoint1.z) {
+        float leftToPoint = length(position - segmentLight.endpoint0);
+        float leftToRight = length(segmentLight.endpoint1 - segmentLight.endpoint0);
+
+        float ratioOfLeft = leftToPoint / leftToRight;
+        float ratioOfRight = 1 - ratioOfLeft;
+
+        color = segmentLight.color0 * ratioOfRight + segmentLight.color1 * ratioOfLeft;
+    }
+
+
+    
+
     // TODO: implement this function.
 }
 
@@ -24,6 +46,12 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
     position = glm::vec3(0.0);
     color = glm::vec3(0.0);
     // TODO: implement this function.
+    
+    if ()
+    float area = length(parallelogramLight.edge01) * length(parallelogramLight.edge02);
+
+
+
 }
 
 // test the visibility at a given light sample
