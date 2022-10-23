@@ -56,10 +56,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
 
         // create new nodes
         int divisionAxis = (n.divisionAxis + 1) % 3;
-        glm::vec3 n_min = { FLOAT_MAX, FLOAT_MAX, FLOAT_MAX };
-        glm::vec3 n_max = { FLOAT_MIN, FLOAT_MIN, FLOAT_MIN };
-        Node left = { n_min, n_max, indexesLeft, divisionAxis, n.level + 1 };
-        Node right = { n_min, n_max, indexesRight, divisionAxis, n.level + 1 };
+        Node left = { VEC_OF_MAXS, VEC_OF_MINS, indexesLeft, divisionAxis, n.level + 1 };
+        Node right = { VEC_OF_MAXS, VEC_OF_MINS, indexesRight, divisionAxis, n.level + 1 };
 
         // store them in the list and update current node's index
         int left_idx = -1;
