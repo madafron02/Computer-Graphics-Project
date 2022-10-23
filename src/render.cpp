@@ -6,6 +6,7 @@
 #ifdef NDEBUG
 #include <omp.h>
 #endif
+#include <iostream>
 
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features) {
     if(features.enableHardShadow) {
@@ -38,9 +39,17 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
         if (features.enableRecursive) {
-            Ray reflected = computeReflectionRay(ray, hitInfo);
-            // TODO: put your own implementation of recursive ray tracing here.
-            computeLightContribution(scene, bvh, features, ray, hitInfo);
+            //bvh.intersect(ray, hitInfo, features);
+            //Ray reflected;
+            //glm::vec3 reflectedColor;
+            //if (rayDepth > -1 && hitInfo.material.ks != glm::vec3 {0,0,0}) { 
+            //reflected = computeReflectionRay(ray, hitInfo);
+            //reflectedColor = getFinalColor(scene, bvh, reflected, features, rayDepth - 1);
+            //drawRay(reflected, Lo + reflected.t * reflectedColor);
+            // 
+            //}
+
+           
         }
         drawRay(ray, Lo);
 
