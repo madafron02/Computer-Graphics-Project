@@ -46,6 +46,7 @@ private:
     static constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
     static constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
 
+    std::vector<float> splitBins;
     std::vector<Node> createdNodes;
     int m_numLevels { 0 };
     int m_numLeaves { 0 };

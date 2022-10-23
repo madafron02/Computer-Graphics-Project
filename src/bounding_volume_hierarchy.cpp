@@ -12,6 +12,7 @@
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
+    , splitBins {0.25, 0.5, 0.75}
 {
     int desiredLevel = 10;
     Node root;
