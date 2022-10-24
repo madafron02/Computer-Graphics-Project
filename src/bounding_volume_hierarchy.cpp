@@ -42,20 +42,20 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
             // multiple times can be avoided
             auto vertices = getTriangleVertices(mesh_idx, triangle);
             for (auto v : vertices) {
-                if (v.position.x < n.min.x)
-                    n.min.x = v.position.x;
-                if (v.position.x > n.max.x)
-                    n.max.x = v.position.x;
+                if (v.position.x < n.bounds.lower.x)
+                    n.bounds.lower.x = v.position.x;
+                if (v.position.x > n.bounds.upper.x)
+                    n.bounds.upper.x = v.position.x;
 
-                if (v.position.y < n.min.y)
-                    n.min.y = v.position.y;
-                if (v.position.y > n.max.y)
-                    n.max.y = v.position.y;
+                if (v.position.y < n.bounds.lower.y)
+                    n.bounds.lower.y = v.position.y;
+                if (v.position.y > n.bounds.upper.y)
+                    n.bounds.upper.y = v.position.y;
 
-                if (v.position.z < n.min.z)
-                    n.min.z = v.position.z;
-                if (v.position.z > n.max.z)
-                    n.max.z = v.position.z;
+                if (v.position.z < n.bounds.lower.z)
+                    n.bounds.lower.z = v.position.z;
+                if (v.position.z > n.bounds.upper.z)
+                    n.bounds.upper.z = v.position.z;
             }
             
             // find division median
@@ -154,8 +154,7 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
         if (n.level != level)
             continue;
 
-        AxisAlignedBox aabb { n.min, n.max };
-        drawAABB(aabb, DrawMode::Wireframe);
+        drawAABB(n.bounds, DrawMode::Wireframe);
     }
 }
 
@@ -176,8 +175,7 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 
     for (auto n : createdNodes) {
         if (n.isLeaf && n.leafNumber == leafIdx) {
-            AxisAlignedBox aabb { n.min, n.max };
-            drawAABB(aabb, DrawMode::Wireframe);
+            drawAABB(n.bounds, DrawMode::Wireframe);
 
             for (const std::tuple<int, int>& t : n.indexes) {
                 int mesh_idx = std::get<0>(t);
