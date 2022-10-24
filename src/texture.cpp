@@ -8,5 +8,12 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     // The pixel are stored in a 1D array of row major order
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
+    if (features.enableTextureMapping) {
+        int height = floor(texCoord.y * image.height);
+        int width = floor(texCoord.x * image.width);
+
+        int index = height * image.width + width;
+        return image.pixels[index];
+    }
     return image.pixels[0];
 }

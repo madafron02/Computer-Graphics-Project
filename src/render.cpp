@@ -3,10 +3,11 @@
 #include "light.h"
 #include "screen.h"
 #include <framework/trackball.h>
+#include "texture.h"
 #ifdef NDEBUG
 #include <omp.h>
 #endif
-#include <iostream>
+
 
 
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features) {
@@ -41,6 +42,11 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
+        if (features.enableTextureMapping) {
+            if (hitInfo.material.kdTexture) {
+                return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
+            }
+        }
 
         // Draw a coloured ray if shading is enabled, else white ray (if it hits).
         if (features.enableShading) {
