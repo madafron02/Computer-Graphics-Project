@@ -6,6 +6,7 @@
 #include "texture.h"
 #include <limits>
 #include <queue>
+#include <stack>
 #include <glm/glm.hpp>
 
 
@@ -219,7 +220,58 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-        return false;
+
+        // We need to call functions on copies of the ray or otherwise the small ray.t will make the
+        // intersect functions always fail.
+        
+        bool hit = false;
+        std::stack<Node> intersections;
+        // We start with the first AABB
+        intersections.push(createdNodes.at(0));
+
+        while (!intersections.empty()) {
+            Node current = intersections.top();
+            intersections.pop();
+
+            Ray initial_ray = ray;
+            if (!intersectRayWithShape(current.bounds, initial_ray))
+                continue;
+
+            // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
+            // (if it's a leaf):
+            if (!current.isLeaf) {
+                int leaf1_idx = std::get<0>(current.indexes.at(0));
+                int leaf2_idx = std::get<1>(current.indexes.at(0));
+                if (leaf1_idx != -1)
+                    intersections.push(createdNodes.at(leaf1_idx));
+                if (leaf2_idx != -1)
+                    intersections.push(createdNodes.at(leaf2_idx));
+
+            } else {
+                // This is a leaf: we check if any of the triangles is closer than any other
+                for (const auto& idx : current.indexes) {
+                    const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
+                    const auto& triangle = mesh.triangles.at(std::get<1>(idx));
+                    const auto v0 = mesh.vertices[triangle[0]];
+                    const auto v1 = mesh.vertices[triangle[1]];
+                    const auto v2 = mesh.vertices[triangle[2]];
+                    if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                        // TODO: somewhere here we need to consider the `features.enableNormalInterp` 
+                        // and `features.enableTextureMapping` options
+                        hitInfo.material = mesh.material;
+                        hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                        hit = true;
+                    }
+                }
+            }
+        }
+
+        // TODO: repeat the above loop for the recursive ray-tracing
+
+        // Intersect with spheres which is not supported by the BVH
+        for (const auto& sphere : m_pScene->spheres)
+            hit |= intersectRayWithShape(sphere, ray, hitInfo);
+        return hit;
     }
 }
 
