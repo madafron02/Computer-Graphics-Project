@@ -48,15 +48,17 @@ private:
     AxisAlignedBox getAABBFromTriangles(const IndexTuple& indexes);
     float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
     void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
-    void getBestSplit(const Node& parent, std::vector<int> axises, std::vector<float> thresholds, Node& left, Node& right);
+    void getBestSplit(const Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right);
+    float calcSplitCost(const IndexTuple& indexes, float parentVolume);
     float calcAABBvolume(const AxisAlignedBox& aabb);
+    std::vector<float> calcAABBthresholds(const AxisAlignedBox& aabb, const std::vector<int>& axises, const std::vector<float>& thresholds);
 
     static constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
     static constexpr float FLOAT_MAX = std::numeric_limits<float>::max();
     static constexpr glm::vec3 VEC_OF_MINS { FLOAT_MIN, FLOAT_MIN, FLOAT_MIN };
     static constexpr glm::vec3 VEC_OF_MAXS { FLOAT_MAX, FLOAT_MAX, FLOAT_MAX };
 
-    std::vector<float> splitBins;
+    static const std::vector<float> splitBins;
     std::vector<Node> createdNodes;
     int m_numLevels { 0 };
     int m_numLeaves { 0 };

@@ -5,16 +5,16 @@
 #include "scene.h"
 #include "texture.h"
 #include <limits>
+#include <iostream>
 #include <queue>
 #include <glm/glm.hpp>
 
-
+const std::vector<float> BoundingVolumeHierarchy::splitBins { 1.0/6, 0.25, 2.0/6, 0.5, 4.0/6, 0.75, 5.0/6 };
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
-    , splitBins {0.25, 0.5, 0.75}
 {
-    int desiredLevel = 10;
+    int desiredLevel = 8;
     Node root;
     // distribute world triangles
     for (int i = 0; i < m_pScene->meshes.size(); ++i) {
@@ -42,29 +42,31 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
             ++m_numLeaves;
             continue;
         }
+         
+        Node left;
+        Node right;
+        left.level = n.level + 1;
+        right.level = n.level + 1;
+        if (!features.extra.enableBvhSahBinning) {
+            int divisionAxis = (n.divisionAxis + 1) % 3;
+            left.divisionAxis = divisionAxis;
+            right.divisionAxis = divisionAxis;
 
-        // The node is not a leaf
-        float median = findTrianglesAxisMedian(n.indexes, n.divisionAxis);
-        
-        // if level not too big then we divide
-        IndexTuple indexesLeft;
-        IndexTuple indexesRight;
-        splitTrianglesByAxisAndThreshold(n.indexes, n.divisionAxis, median, indexesLeft, indexesRight);
-
-        // create new nodes
-        int divisionAxis = (n.divisionAxis + 1) % 3;
-        Node left = { VEC_OF_MAXS, VEC_OF_MINS, indexesLeft, divisionAxis, n.level + 1 };
-        Node right = { VEC_OF_MAXS, VEC_OF_MINS, indexesRight, divisionAxis, n.level + 1 };
-
+            getBestSplit(n, { n.divisionAxis }, { findTrianglesAxisMedian(n.indexes, n.divisionAxis) }, left, right);
+        } else {
+            std::vector<int> axises { 0, 1, 2 };
+            getBestSplit(n, axises, calcAABBthresholds(n.bounds, axises, splitBins), left, right);
+        }
+       
         // store them in the list and update current node's index
         int left_idx = -1;
         int right_idx = -1;
-        if (indexesLeft.size() > 0) {
+        if (left.indexes.size() > 0) {
             left_idx = createdNodes.size();
             toDivide.push(left_idx);
             createdNodes.emplace_back(left);
         }
-        if (indexesRight.size() > 0) {
+        if (right.indexes.size() > 0) {
             right_idx = createdNodes.size();
             toDivide.push(right_idx);
             createdNodes.emplace_back(right);
@@ -280,41 +282,40 @@ void BoundingVolumeHierarchy::splitTrianglesByAxisAndThreshold(const IndexTuple&
     }
 }
 
-void BoundingVolumeHierarchy::getBestSplit(const Node& parent, std::vector<int> axises, std::vector<float> thresholds, Node& left, Node& right)
+void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right)
 {
     float bestCost = FLOAT_MAX;
-    for (auto axis : axises) {
-        for (auto threshold : thresholds) {
+    float parentVolume = calcAABBvolume(parent.bounds);
+    int thresholds_per_axis = thresholds.size() / axises.size();
+    for (int i = 0; i < axises.size(); ++i) {
+        for (int j = 0; j < thresholds_per_axis; ++j) {
             IndexTuple indexesLeft;
             IndexTuple indexesRight;
-            splitTrianglesByAxisAndThreshold(parent.indexes, axis, threshold, indexesLeft, indexesRight);
+            splitTrianglesByAxisAndThreshold(parent.indexes, axises.at(i), thresholds.at(i * thresholds_per_axis + j), indexesLeft, indexesRight);
 
-            float parentVolume = calcAABBvolume(parent.bounds);
+            float cost_left = calcSplitCost(indexesLeft, parentVolume);
+            float cost_right = calcSplitCost(indexesRight, parentVolume);
 
-            float cost_left = 0;
-            AxisAlignedBox AABB_left;
-            if (indexesLeft.size() > 0) {
-                AABB_left = getAABBFromTriangles(indexesLeft);
-                float leftVolume = calcAABBvolume(AABB_left);
-
-                cost_left = (leftVolume / parentVolume) * indexesLeft.size();
-            }
-
-            float cost_right = 0;
-            AxisAlignedBox AABB_right;
-            if (indexesRight.size() > 0) {
-                AABB_right = getAABBFromTriangles(indexesRight);
-                float rightVolume = calcAABBvolume(AABB_right);
-
-                cost_right = (rightVolume / parentVolume) * indexesRight.size();
-            }
-           
             if (cost_left + cost_right < bestCost) {
                 bestCost = cost_left + cost_right;
                 // save best setting
+                left.indexes = indexesLeft;
+                right.indexes = indexesRight;
             }
         }
     }
+}
+
+float BoundingVolumeHierarchy::calcSplitCost(const IndexTuple& indexes, float parentVolume)
+{
+    float cost = 0;
+
+    if (indexes.size() > 0) {
+        float leftVolume = calcAABBvolume(getAABBFromTriangles(indexes));
+
+        cost = (leftVolume / parentVolume) * indexes.size();
+    }
+    return cost;
 }
 
 float BoundingVolumeHierarchy::calcAABBvolume(const AxisAlignedBox& a)
@@ -322,5 +323,20 @@ float BoundingVolumeHierarchy::calcAABBvolume(const AxisAlignedBox& a)
     float answer = (a.upper.x - a.lower.x) * (a.upper.y - a.lower.y) * (a.upper.z - a.lower.z);
     if (answer < 0)
         answer *= -1;
+    return answer;
+}
+
+std::vector<float> BoundingVolumeHierarchy::calcAABBthresholds(const AxisAlignedBox& aabb, const std::vector<int>& axises, const std::vector<float>& thresholds)
+{
+    std::vector<float> answer;
+    for (int axis : axises) {
+        // For each axis:
+        float len = aabb.upper[axis] - aabb.lower[axis];
+        float start = aabb.lower[axis];
+
+        for (float threshold : thresholds) {
+            answer.emplace_back(threshold * len + start);
+        }
+    }
     return answer;
 }
