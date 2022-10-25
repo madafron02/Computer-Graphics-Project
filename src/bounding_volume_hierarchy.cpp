@@ -291,7 +291,11 @@ void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector
         for (int j = 0; j < thresholds_per_axis; ++j) {
             IndexTuple indexesLeft;
             IndexTuple indexesRight;
-            splitTrianglesByAxisAndThreshold(parent.indexes, axises.at(i), thresholds.at(i * thresholds_per_axis + j), indexesLeft, indexesRight);
+
+            // thresholds.at(i * thresholds_per_axis + j) retrieves a threshold from
+            // a two-dimensional array, where we store n thresholds for each axis
+            splitTrianglesByAxisAndThreshold(parent.indexes, axises.at(i), thresholds.at(i * thresholds_per_axis + j), 
+                indexesLeft, indexesRight);
 
             float cost_left = calcSplitCost(indexesLeft, parentVolume);
             float cost_right = calcSplitCost(indexesRight, parentVolume);
@@ -328,6 +332,10 @@ float BoundingVolumeHierarchy::calcAABBvolume(const AxisAlignedBox& a)
 
 std::vector<float> BoundingVolumeHierarchy::calcAABBthresholds(const AxisAlignedBox& aabb, const std::vector<int>& axises, const std::vector<float>& thresholds)
 {
+    /*
+        This function produces a two-dimensional array of n thresholds (specified in thresholds vector) 
+        in AABB coordinates for each axis from the axises vector.
+    */
     std::vector<float> answer;
     for (int axis : axises) {
         // For each axis:
