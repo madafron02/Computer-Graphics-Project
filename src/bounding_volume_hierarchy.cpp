@@ -10,7 +10,7 @@
 
 
 
-BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
+BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
     , splitBins {0.25, 0.5, 0.75}
 {
