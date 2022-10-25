@@ -33,10 +33,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
 
         Node& n = createdNodes.at(n_idx);
 
-        AxisAlignedBox aabb = getAABBFromTriangles(n.indexes);
-        n.min = aabb.lower;
-        n.max = aabb.upper;
-
+        n.bounds = getAABBFromTriangles(n.indexes);
         // if it's a leaf
         if (n.level >= desiredLevel || n.indexes.size() < 2) {
             // we quit calculations at this point
@@ -109,8 +106,7 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
         if (n.level != level)
             continue;
 
-        AxisAlignedBox aabb { n.min, n.max };
-        drawAABB(aabb, DrawMode::Wireframe);
+        drawAABB(n.bounds, DrawMode::Wireframe);
     }
 }
 
@@ -131,8 +127,7 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 
     for (auto n : createdNodes) {
         if (n.isLeaf && n.leafNumber == leafIdx) {
-            AxisAlignedBox aabb { n.min, n.max };
-            drawAABB(aabb, DrawMode::Wireframe);
+            drawAABB(n.bounds, DrawMode::Wireframe);
 
             for (const std::tuple<int, int>& t : n.indexes) {
                 int mesh_idx = std::get<0>(t);

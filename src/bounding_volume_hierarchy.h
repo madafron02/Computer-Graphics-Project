@@ -37,10 +37,12 @@ private:
     AxisAlignedBox getAABBFromTriangles(const IndexTuple& indexes);
     float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
     void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
+    void getBestSplit(const IndexTuple& indexes, std::vector<int> axises, std::vector<float> thresholds, IndexTuple& left, IndexTuple& right);
 
     struct Node {
-        glm::vec3 min = VEC_OF_MAXS;
-        glm::vec3 max = VEC_OF_MINS;
+        AxisAlignedBox bounds = {
+            VEC_OF_MAXS, VEC_OF_MINS
+        };
         IndexTuple indexes;
         int divisionAxis = 0; // x = 0, y = 1, z = 2
         int level = 0;
