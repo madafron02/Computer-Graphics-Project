@@ -12,31 +12,19 @@ DISABLE_WARNINGS_POP()
 // you should fill in the vectors position and color with the sampled position and color
 void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color)
 {
+    glm::vec3 segDir = normalize(segmentLight.endpoint1 - segmentLight.endpoint0);
+    int segLen = length(segmentLight.endpoint1 - segmentLight.endpoint0);
 
-    if (position == segmentLight.endpoint0) {
-        color = segmentLight.color0;
-        return;
-    }
+    float t = rand() / (RAND_MAX / segLen);
+    position = segmentLight.endpoint0 + t * segDir;
 
-    if (position == segmentLight.endpoint1) {
-        color = segmentLight.color1;
-        return;
-    }
+    float leftToPoint = length(position - segmentLight.endpoint0);
+    float leftToRight = length(segmentLight.endpoint1 - segmentLight.endpoint0);
 
-    if (segmentLight.endpoint0.x < position.x < segmentLight.endpoint1.x && segmentLight.endpoint0.y < position.y < segmentLight.endpoint1.y && segmentLight.endpoint0.z < position.z < segmentLight.endpoint1.z) {
-        float leftToPoint = length(position - segmentLight.endpoint0);
-        float leftToRight = length(segmentLight.endpoint1 - segmentLight.endpoint0);
+    float ratioOfLeft = leftToPoint / leftToRight;
+    float ratioOfRight = 1 - ratioOfLeft;
 
-        float ratioOfLeft = leftToPoint / leftToRight;
-        float ratioOfRight = 1 - ratioOfLeft;
-
-        color = segmentLight.color0 * ratioOfRight + segmentLight.color1 * ratioOfLeft;
-    }
-
-
-    
-
-    // TODO: implement this function.
+    color = segmentLight.color0 * ratioOfRight + segmentLight.color1 * ratioOfLeft;
 }
 
 // samples a parallelogram light source
@@ -46,8 +34,7 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
     position = glm::vec3(0.0);
     color = glm::vec3(0.0);
     // TODO: implement this function.
-    
-    if ()
+
     float area = length(parallelogramLight.edge01) * length(parallelogramLight.edge02);
 
 
@@ -121,10 +108,25 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                     return glm::vec3{0.0f};
                 }
                 return color;
+
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
                 // Perform your calculations for a segment light.
-                return computeShading(segmentLight.endpoint1 - segmentLight.endpoint0, segmentLight.color1 - segmentLight.color0, features, ray, hitInfo);
+                glm::vec3 result{0.0f};
+
+                if(features.enableSoftShadow) {
+                    for(int i = 1; i <= 50; i++) {
+                        glm::vec3 position;
+                        glm::vec3 color;
+                        sampleSegmentLight(segmentLight, position, color);
+
+                        result += computeShading(position, color, features, ray, hitInfo);
+                    }
+
+                    return result /= 50.0f;
+                }
+                return hitInfo.material.kd;
+
             } else if (std::holds_alternative<ParallelogramLight>(light)) {
                 const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
                 // Perform your calculations for a parallelogram light.
@@ -143,10 +145,26 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                     return glm::vec3 { 0.0f };
                 }
                 return color;
+
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
                 // Perform your calculations for a segment light.
+
+                glm::vec3 result{0.0f};
+
+                if(features.enableSoftShadow) {
+                    for(int i = 1; i <= 50; i++) {
+                        glm::vec3 position;
+                        glm::vec3 color;
+                        sampleSegmentLight(segmentLight, position, color);
+
+                        result += color;
+                    }
+
+                    return result /= 50.0f;
+                }
                 return color;
+
             } else if (std::holds_alternative<ParallelogramLight>(light)) {
                 const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
                 // Perform your calculations for a parallelogram light.
