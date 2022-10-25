@@ -7,6 +7,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/geometric.hpp>
 DISABLE_WARNINGS_POP()
 #include <cmath>
+#include <iostream>
 
 
 // samples a segment light source
@@ -14,9 +15,9 @@ DISABLE_WARNINGS_POP()
 void sampleSegmentLight(const SegmentLight& segmentLight, glm::vec3& position, glm::vec3& color)
 {
     glm::vec3 segDir = normalize(segmentLight.endpoint1 - segmentLight.endpoint0);
-    int segLen = length(segmentLight.endpoint1 - segmentLight.endpoint0);
+    float segLen = length(segmentLight.endpoint1 - segmentLight.endpoint0);
 
-    float t = rand() / (RAND_MAX / segLen);
+    float t = (float)rand() / (RAND_MAX / segLen);
     position = segmentLight.endpoint0 + t * segDir;
 
     float leftToPoint = length(position - segmentLight.endpoint0);
@@ -34,23 +35,26 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
 {
     glm::vec3 segDir1 = normalize(parallelogramLight.edge01);
     glm::vec3 segDir2 = normalize(parallelogramLight.edge02);
-    int segLen1 = length(parallelogramLight.edge01);
-    int segLen2 = length(parallelogramLight.edge02);
+    float segLen1 = length(parallelogramLight.edge01);
+    float segLen2 = length(parallelogramLight.edge02);
 
     float t1 = rand() / (RAND_MAX / segLen1);
     float t2 = rand() / (RAND_MAX / segLen2);
+    //std::cout << t1 << " "  << t2 << "\n";
 
-    position = t1 * segDir1 + t2 * segDir2;
+    position = parallelogramLight.v0 + t1 * segDir1 + t2 * segDir2;
 
-    float alpha = length(t2 * parallelogramLight.edge02);
-    float beta = length(t1 * parallelogramLight.edge01);
+    float alpha = length(t2 * segDir2);
+    float beta = length(t1 * segDir1);
 
     float area = segLen1 * segLen2;
 
     color = parallelogramLight.color3 * (alpha * beta / area)
         + parallelogramLight.color2 * (alpha * (segLen1 - beta) / area)
-        + parallelogramLight.color1 * ((segDir2 - alpha) * beta / area)
-        + parallelogramLight.color0 * ((segDir2 - alpha) * (segDir1 - beta) / area);
+        + parallelogramLight.color1 * ((segLen2 - alpha) * beta / area)
+        + parallelogramLight.color0 * ((segLen2 - alpha) * (segLen1 - beta) / area);
+
+    std::cout << color.x + color.y + color.z << "\n";
 }
 
 // test the visibility at a given light sample
@@ -115,7 +119,6 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
 
             if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
-                // Perform your calculations for a point light.
 
                 glm::vec3 color = computeShading(pointLight.position, pointLight.color, features, ray, hitInfo);
                 if(features.enableHardShadow && testVisibilityLightSample(pointLight.position, color, bvh, features, ray, hitInfo) == 0.0) {
@@ -134,12 +137,10 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         sampleSegmentLight(segmentLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-
                         drawRay(softDebug, color);
 
                         result += computeShading(position, color, features, ray, hitInfo);
                     }
-
                     return result /= 50.0f;
                 }
                 return hitInfo.material.kd;
@@ -154,9 +155,11 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         glm::vec3 color;
                         sampleParallelogramLight(parallelogramLight, position, color);
 
+                        Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
+                        drawRay(softDebug, color);
+
                         result += computeShading(position, color, features, ray, hitInfo);
                     }
-
                     return result /= 50.0f;
                 }
                 return hitInfo.material.kd;
@@ -169,7 +172,7 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
 
         if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
-                // Perform your calculations for a point light.
+
                 if (features.enableHardShadow && testVisibilityLightSample(pointLight.position, pointLight.color, bvh, features, ray, hitInfo) == 0.0) {
                     return glm::vec3 { 0.0f };
                 }
@@ -177,8 +180,6 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
 
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
-                // Perform your calculations for a segment light.
-
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
@@ -187,9 +188,11 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         glm::vec3 color;
                         sampleSegmentLight(segmentLight, position, color);
 
+                        Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
+                        drawRay(softDebug, color);
+
                         result += color;
                     }
-
                     return result /= 50.0f;
                 }
                 return color;
@@ -202,15 +205,14 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                     for(int i = 1; i <= 50; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
+
                         sampleParallelogramLight(parallelogramLight, position, color);
                         result += color;
                     }
-
                     return result /= 50.0f;
                 }
                 return color;
             }
         }
-
     }
 }

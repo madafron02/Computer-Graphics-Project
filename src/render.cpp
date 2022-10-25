@@ -48,11 +48,9 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         if(features.enableShading) {
             drawRay(ray, Lo);
             drawShadowRays(scene, ray, bvh, hitInfo, features);
-
         } else {
             drawRay(ray, glm::vec3{1.0f});
             drawShadowRays(scene, ray, bvh, hitInfo, features);
-
         }
         return Lo;
     } else {
