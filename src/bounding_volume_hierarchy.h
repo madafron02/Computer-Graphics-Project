@@ -32,13 +32,6 @@ public:
 private:
     using IndexTuple = std::vector<std::tuple<int, int>>;
 
-    Vertex computeCentroid(int mesh, glm::uvec3 triangle);
-    std::vector<Vertex> getTriangleVertices(int mesh, glm::uvec3 triangle);
-    AxisAlignedBox getAABBFromTriangles(const IndexTuple& indexes);
-    float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
-    void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
-    void getBestSplit(const IndexTuple& indexes, std::vector<int> axises, std::vector<float> thresholds, IndexTuple& left, IndexTuple& right);
-
     struct Node {
         AxisAlignedBox bounds = {
             VEC_OF_MAXS, VEC_OF_MINS
@@ -49,6 +42,14 @@ private:
         bool isLeaf = false;
         int leafNumber = -1;
     };
+
+    Vertex computeCentroid(int mesh, glm::uvec3 triangle);
+    std::vector<Vertex> getTriangleVertices(int mesh, glm::uvec3 triangle);
+    AxisAlignedBox getAABBFromTriangles(const IndexTuple& indexes);
+    float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
+    void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
+    void getBestSplit(const Node& parent, std::vector<int> axises, std::vector<float> thresholds, Node& left, Node& right);
+    float calcAABBvolume(const AxisAlignedBox& aabb);
 
     static constexpr float FLOAT_MIN = std::numeric_limits<float>::lowest();
     static constexpr float FLOAT_MAX = std::numeric_limits<float>::max();

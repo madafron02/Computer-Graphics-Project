@@ -279,3 +279,48 @@ void BoundingVolumeHierarchy::splitTrianglesByAxisAndThreshold(const IndexTuple&
             right.push_back(t);
     }
 }
+
+void BoundingVolumeHierarchy::getBestSplit(const Node& parent, std::vector<int> axises, std::vector<float> thresholds, Node& left, Node& right)
+{
+    float bestCost = FLOAT_MAX;
+    for (auto axis : axises) {
+        for (auto threshold : thresholds) {
+            IndexTuple indexesLeft;
+            IndexTuple indexesRight;
+            splitTrianglesByAxisAndThreshold(parent.indexes, axis, threshold, indexesLeft, indexesRight);
+
+            float parentVolume = calcAABBvolume(parent.bounds);
+
+            float cost_left = 0;
+            AxisAlignedBox AABB_left;
+            if (indexesLeft.size() > 0) {
+                AABB_left = getAABBFromTriangles(indexesLeft);
+                float leftVolume = calcAABBvolume(AABB_left);
+
+                cost_left = (leftVolume / parentVolume) * indexesLeft.size();
+            }
+
+            float cost_right = 0;
+            AxisAlignedBox AABB_right;
+            if (indexesRight.size() > 0) {
+                AABB_right = getAABBFromTriangles(indexesRight);
+                float rightVolume = calcAABBvolume(AABB_right);
+
+                cost_right = (rightVolume / parentVolume) * indexesRight.size();
+            }
+           
+            if (cost_left + cost_right < bestCost) {
+                bestCost = cost_left + cost_right;
+                // save best setting
+            }
+        }
+    }
+}
+
+float BoundingVolumeHierarchy::calcAABBvolume(const AxisAlignedBox& a)
+{
+    float answer = (a.upper.x - a.lower.x) * (a.upper.y - a.lower.y) * (a.upper.z - a.lower.z);
+    if (answer < 0)
+        answer *= -1;
+    return answer;
+}
