@@ -110,7 +110,7 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
 {
     bvh.intersect(ray, hitInfo, features);
 
-    glm::vec3 pointHit = ray.origin + ray.t * ray.direction;
+    glm::vec3 pointHit = ray.origin + (ray.t - 0.001f) * ray.direction;
 
     if (features.enableShading) {
         // If shading is enabled, compute the contribution from all lights.
@@ -131,21 +131,18 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
-                    float visibleRays = 0.0f;
-                    for(int i = 1; i <= 50; i++) {
+                    for(int i = 1; i <= 100; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleSegmentLight(segmentLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        bvh.intersect(softDebug, hitInfo, features);
-                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                        if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
                             result += computeShading(position, color, features, ray, hitInfo);
-                            visibleRays++;
                         }
                     }
-                    return result /= visibleRays;
+                    return result /= 100.0f;
                 }
                 return hitInfo.material.kd;
 
@@ -154,22 +151,18 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
-                    float visibleRays = 0.0f;
-                    for(int i = 1; i <= 50; i++) {
+                    for(int i = 1; i <= 100; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleParallelogramLight(parallelogramLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        bvh.intersect(softDebug, hitInfo, features);
-                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                        if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
                             result += computeShading(position, color, features, ray, hitInfo);
-                            visibleRays++;
                         }
                     }
-                    //std::cout << visibleRays << "\n";
-                    return result /= visibleRays;
+                    return result /= 100.0f;
                 }
                 return hitInfo.material.kd;
             }
@@ -177,7 +170,6 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
     } else {
         for (const auto& light : scene.lights) {
             bvh.intersect(ray, hitInfo, features);
-            glm::vec3 color = hitInfo.material.kd;
 
         if (std::holds_alternative<PointLight>(light)) {
                 const PointLight pointLight = std::get<PointLight>(light);
@@ -185,53 +177,47 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 if (features.enableHardShadow && testVisibilityLightSample(pointLight.position, pointLight.color, bvh, features, ray, hitInfo) == 0.0) {
                     return glm::vec3 { 0.0f };
                 }
-                return color;
+                return hitInfo.material.kd;
 
             } else if (std::holds_alternative<SegmentLight>(light)) {
                 const SegmentLight segmentLight = std::get<SegmentLight>(light);
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
-                    float visibleRays = 0.0f;
-                    for(int i = 1; i <= 50; i++) {
+                    for(int i = 1; i <= 100; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleSegmentLight(segmentLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        bvh.intersect(softDebug, hitInfo, features);
-                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                        if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
-                            result += color;
-                            visibleRays++;
+                            result += hitInfo.material.kd;
                         }
                     }
-                    return result /= visibleRays;
+                    return result /= 100.0f;
                 }
-                return color;
+                return hitInfo.material.kd;
 
             } else if (std::holds_alternative<ParallelogramLight>(light)) {
                 const ParallelogramLight parallelogramLight = std::get<ParallelogramLight>(light);
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
-                    float visibleRays = 0.0f;
-                    for(int i = 1; i <= 50; i++) {
+                    for(int i = 1; i <= 100; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleParallelogramLight(parallelogramLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        bvh.intersect(softDebug, hitInfo, features);
-                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                        if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
-                            result += color;
-                            visibleRays++;
+                            result += hitInfo.material.kd;
                         }
                     }
-                    return result /= visibleRays;
+                    return result /= 100.0f;
                 }
-                return color;
+                return hitInfo.material.kd;
             }
         }
     }
