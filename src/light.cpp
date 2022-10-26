@@ -54,7 +54,7 @@ void sampleParallelogramLight(const ParallelogramLight& parallelogramLight, glm:
         + parallelogramLight.color1 * ((segLen2 - alpha) * beta / area)
         + parallelogramLight.color0 * ((segLen2 - alpha) * (segLen1 - beta) / area);
 
-    std::cout << color.x + color.y + color.z << "\n";
+    //std::cout << color.x + color.y + color.z << "\n";
 }
 
 // test the visibility at a given light sample
@@ -131,17 +131,21 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
+                    float visibleRays = 0.0f;
                     for(int i = 1; i <= 50; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleSegmentLight(segmentLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        drawRay(softDebug, color);
-
-                        result += computeShading(position, color, features, ray, hitInfo);
+                        bvh.intersect(softDebug, hitInfo, features);
+                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                            drawRay(softDebug, color);
+                            result += computeShading(position, color, features, ray, hitInfo);
+                            visibleRays++;
+                        }
                     }
-                    return result /= 50.0f;
+                    return result /= visibleRays;
                 }
                 return hitInfo.material.kd;
 
@@ -150,17 +154,22 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
+                    float visibleRays = 0.0f;
                     for(int i = 1; i <= 50; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleParallelogramLight(parallelogramLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        drawRay(softDebug, color);
-
-                        result += computeShading(position, color, features, ray, hitInfo);
+                        bvh.intersect(softDebug, hitInfo, features);
+                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                            drawRay(softDebug, color);
+                            result += computeShading(position, color, features, ray, hitInfo);
+                            visibleRays++;
+                        }
                     }
-                    return result /= 50.0f;
+                    //std::cout << visibleRays << "\n";
+                    return result /= visibleRays;
                 }
                 return hitInfo.material.kd;
             }
@@ -183,17 +192,21 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
+                    float visibleRays = 0.0f;
                     for(int i = 1; i <= 50; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
                         sampleSegmentLight(segmentLight, position, color);
 
                         Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
-                        drawRay(softDebug, color);
-
-                        result += color;
+                        bvh.intersect(softDebug, hitInfo, features);
+                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                            drawRay(softDebug, color);
+                            result += color;
+                            visibleRays++;
+                        }
                     }
-                    return result /= 50.0f;
+                    return result /= visibleRays;
                 }
                 return color;
 
@@ -202,14 +215,21 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                 glm::vec3 result{0.0f};
 
                 if(features.enableSoftShadow) {
+                    float visibleRays = 0.0f;
                     for(int i = 1; i <= 50; i++) {
                         glm::vec3 position;
                         glm::vec3 color;
-
                         sampleParallelogramLight(parallelogramLight, position, color);
-                        result += color;
+
+                        Ray softDebug = {pointHit, normalize(position - pointHit), length(position - pointHit)};
+                        bvh.intersect(softDebug, hitInfo, features);
+                        if(testVisibilityLightSample(position, color, bvh, features, softDebug, hitInfo) != 0.0) {
+                            drawRay(softDebug, color);
+                            result += color;
+                            visibleRays++;
+                        }
                     }
-                    return result /= 50.0f;
+                    return result /= visibleRays;
                 }
                 return color;
             }
