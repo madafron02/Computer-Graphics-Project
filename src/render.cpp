@@ -7,6 +7,7 @@
 #ifdef NDEBUG
 #include <omp.h>
 #endif
+#include <iostream>
 
 
 
@@ -42,11 +43,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        if (features.enableTextureMapping) {
-            if (hitInfo.material.kdTexture) {
-                return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
-            }
-        }
+        
 
         // Draw a coloured ray if shading is enabled, else white ray (if it hits).
         if (features.enableShading) {
@@ -58,6 +55,10 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             drawShadowRays(scene, ray, bvh, hitInfo, features);
         }
 
+        if (features.enableTextureMapping && hitInfo.material.kdTexture) {
+            return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
+        }
+
 
         if (features.enableRecursive && rayDepth < bvh.numLevels() && (hitInfo.material.ks != glm::vec3 {0,0,0})) {
 
@@ -67,6 +68,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             return Lo + reflectColor;
  
         }
+
+        
         
         return Lo;
     } else {

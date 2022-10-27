@@ -7,6 +7,7 @@
 #include <limits>
 #include <queue>
 #include <glm/glm.hpp>
+#include <iostream>
 
 
 
@@ -207,12 +208,18 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v1 = mesh.vertices[tri[1]];
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+
+                    hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray.origin + ray.t * ray.direction);
+
                     hitInfo.material = mesh.material;
                     hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     hit = true;
 
-                    hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray.origin + ray.t * ray.direction);
                     
+                    if (features.enableTextureMapping) {
+                        hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                    }
+
                     if (features.enableNormalInterp) {
                         glm::vec3 interpolatNormal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
                         Ray normal0 = { v0.position,
@@ -231,11 +238,12 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                             normalize(interpolatNormal),
                             1 };
 
-                        drawRay(normal0, { 1, 1, 1 });
-                        drawRay(normal1, { 1, 1, 1 });
-                        drawRay(normal2, { 1, 1, 1 });
-                        drawRay(interpolated, { 1, 1, 1 });
+                        drawRay(normal0, { 0, 1, 0 });
+                        drawRay(normal1, { 0, 1, 0 });
+                        drawRay(normal2, { 0, 1, 0 });
+                        drawRay(interpolated, { 1, 0, 0 });
                     }
+                    
                 }
 
                 
@@ -249,6 +257,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
+
         return false;
     }
 }
