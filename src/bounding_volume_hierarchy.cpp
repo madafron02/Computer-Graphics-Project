@@ -8,6 +8,7 @@
 #include <queue>
 #include <stack>
 #include <glm/glm.hpp>
+#include <iostream>
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
@@ -188,6 +189,29 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
+glm::vec2 BoundingVolumeHierarchy::getMarginsIntersection(AxisAlignedBox box, Ray ray) const {
+    float txmin = (box.lower.x - ray.origin.x) / ray.direction.x;
+    float tymin = (box.lower.y - ray.origin.y) / ray.direction.y;
+    float tzmin = (box.lower.z - ray.origin.z) / ray.direction.z;
+
+    float txmax = (box.upper.x - ray.origin.x) / ray.direction.x;
+    float tymax = (box.upper.y - ray.origin.y) / ray.direction.y;
+    float tzmax = (box.upper.z - ray.origin.z) / ray.direction.z;
+
+    float txin = fminf(txmax, txmin);
+    float tyin = fminf(tymax, tymin);
+    float tzin = fminf(tzmax, tzmin);
+
+    float txout = fmaxf(txmax, txmin);
+    float tyout = fmaxf(tymax, tymin);
+    float tzout = fmaxf(tzmax, tzmin);
+
+    float tin = fmaxf(txin, fmaxf(tyin, tzin));
+    float tout = fminf(txout, fminf(tyout, tzout));
+
+    return glm::vec2{tin, tout};
+}
+
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
@@ -199,7 +223,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     {
         bool operator() (const pair &lhs, const pair &rhs) const
         {
-            return lhs.first > rhs.first;
+            return lhs.first < rhs.first;
         }
     };
 
@@ -228,73 +252,135 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
 
-        // We need to call functions on copies of the ray or otherwise the small ray.t will make the
-        // intersect functions always fail.
         bool hit = false;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
         // We start with the first AABB
-        intersections.push(std::make_pair(ray.t, createdNodes.at(0)));
+        Node root = createdNodes.at(0);
+        glm::vec2 margins = getMarginsIntersection(root.bounds, ray);
 
-        while (!intersections.empty()) {
-            pair current_pair = intersections.top();
-            Node current = current_pair.second;
-            intersections.pop();
+        if(margins.x <= margins.y && margins.y >= 0.0f) {
+            intersections.push(std::make_pair( margins.x, root));
 
-            Ray initial_ray = ray;
-            if (!intersectRayWithShape(current.bounds, initial_ray))
-                continue;
+            while (!intersections.empty()) {
+                pair current_pair = intersections.top();
+                Node current = current_pair.second;
+                intersections.pop();
 
-            // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
-            // (if it's a leaf):
-            if (!current.isLeaf) {
-                int leaf1_idx = std::get<0>(current.indexes.at(0));
-                int leaf2_idx = std::get<1>(current.indexes.at(0));
-                float original_t = initial_ray.t;
+                // We need to call functions on copies of the ray or otherwise the small ray.t will make the
+                // intersect functions always fail.
+                Ray initial_ray = ray;
+                if (!intersectRayWithShape(current.bounds, initial_ray))
+                    continue;
 
-                // Set order of child nodes based on hit distance
-                if(leaf1_idx != -1 && leaf2_idx != -1) {
-                    Node node1 = createdNodes.at(leaf1_idx);
-                    Node node2 = createdNodes.at(leaf2_idx);
+                // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
+                // (if it's a leaf):
+                if (!current.isLeaf) {
+                    int leaf1_idx = std::get<0>(current.indexes.at(0));
+                    int leaf2_idx = std::get<1>(current.indexes.at(0));
 
-                    if(intersectRayWithShape(node1.bounds, initial_ray)) {
-                        intersections.push(std::make_pair(initial_ray.t, node1));
-                        if(intersectRayWithShape(node2.bounds, initial_ray)) {
-                            intersections.push(std::make_pair(initial_ray.t, node2));
+                    // Set order of child nodes based on hit distance
+//                    if(leaf1_idx != -1 && leaf2_idx != -1) {
+//                        Node node1 = createdNodes.at(leaf1_idx);
+//                        Node node2 = createdNodes.at(leaf2_idx);
+//
+//                        if(intersectRayWithShape(node1.bounds, initial_ray)) {
+//                            intersections.push(std::make_pair(initial_ray.t, node1));
+//                            initial_ray = ray;
+//                            if(intersectRayWithShape(node2.bounds, initial_ray)) {
+//                                intersections.push(std::make_pair(initial_ray.t, node2));
+//                            }
+//                        } else if(intersectRayWithShape(node2.bounds, initial_ray)) {
+//                            intersections.push(std::make_pair(initial_ray.t, node2));
+//                        }
+//                    } else if(leaf1_idx != -1) {
+//                        Node node1 = createdNodes.at(leaf1_idx);
+//                        if(intersectRayWithShape(node1.bounds, initial_ray)) {
+//                            intersections.push(std::make_pair(initial_ray.t, node1));
+//                        }
+//                    } else if(leaf2_idx != -1){
+//                        Node node2 = createdNodes.at(leaf2_idx);
+//                        if(intersectRayWithShape(node2.bounds, initial_ray)) {
+//                            intersections.push(std::make_pair(initial_ray.t, node2));
+//                        }
+//                    }
+                    if(leaf1_idx != -1 && leaf2_idx != -1) {
+                        Node node1 = createdNodes.at(leaf1_idx);
+                        Node node2 = createdNodes.at(leaf2_idx);
+
+                        glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
+                        glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
+
+                        if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
+                            intersections.push(std::make_pair(margins1.x, node1));
                         }
-                    } else if(intersectRayWithShape(node2.bounds, initial_ray)) {
-                        intersections.push(std::make_pair(initial_ray.t, node2));
+                        if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
+                            intersections.push(std::make_pair(margins2.x, node2));
+                        }
+                    } else if(leaf1_idx != -1) {
+                        Node node1 = createdNodes.at(leaf1_idx);
+                        glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
+                        if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
+                            intersections.push(std::make_pair(margins1.x, node1));
+                        }
+                    } else if(leaf2_idx != -1) {
+                        Node node2 = createdNodes.at(leaf2_idx);
+                        glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
+                        if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
+                            intersections.push(std::make_pair(margins2.x, node2));
+                        }
                     }
-                } else if(leaf1_idx != -1) {
-                    Node node1 = createdNodes.at(leaf1_idx);
-                    if(intersectRayWithShape(node1.bounds, initial_ray)) {
-                        intersections.push(std::make_pair(initial_ray.t, node1));
-                    }
-                } else if(leaf2_idx != -1){
-                    Node node2 = createdNodes.at(leaf2_idx);
-                    if(intersectRayWithShape(node2.bounds, initial_ray)) {
-                        intersections.push(std::make_pair(initial_ray.t, node2));
-                    }
-                }
-                initial_ray.t = original_t;
+                } else {
+                    // This is a leaf: we check if any of the triangles is closer than any other
+                    for (const auto& idx : current.indexes) {
+                        const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
+                        const auto& triangle = mesh.triangles.at(std::get<1>(idx));
+                        const auto v0 = mesh.vertices[triangle[0]];
+                        const auto v1 = mesh.vertices[triangle[1]];
+                        const auto v2 = mesh.vertices[triangle[2]];
 
-            } else {
-                // This is a leaf: we check if any of the triangles is closer than any other
-                for (const auto& idx : current.indexes) {
-                    const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
-                    const auto& triangle = mesh.triangles.at(std::get<1>(idx));
-                    const auto v0 = mesh.vertices[triangle[0]];
-                    const auto v1 = mesh.vertices[triangle[1]];
-                    const auto v2 = mesh.vertices[triangle[2]];
-                    if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-                        // TODO: somewhere here we need to consider the `features.enableNormalInterp` 
-                        // and `features.enableTextureMapping` options
-                        hitInfo.material = mesh.material;
-                        hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
-                        hit = true;
+                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                            // TODO: somewhere here we need to consider the `features.enableNormalInterp`
+                            // and `features.enableTextureMapping` options
+                            hitInfo.material = mesh.material;
+                            hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                            hit = true;
+                        }
                     }
                 }
             }
+        } else {
+            int leaf1_idx = std::get<0>(root.indexes.at(0));
+            int leaf2_idx = std::get<1>(root.indexes.at(0));
+
+            if(leaf1_idx != -1 && leaf2_idx != -1) {
+                Node node1 = createdNodes.at(leaf1_idx);
+                Node node2 = createdNodes.at(leaf2_idx);
+
+                glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
+                glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
+
+                if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
+                    intersections.push(std::make_pair(margins1.x, node1));
+                }
+                if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
+                    intersections.push(std::make_pair(margins2.x, node2));
+                }
+            } else if(leaf1_idx != -1) {
+                Node node1 = createdNodes.at(leaf1_idx);
+                glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
+                if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
+                    intersections.push(std::make_pair(margins1.x, node1));
+                }
+            } else if(leaf2_idx != -1) {
+                Node node2 = createdNodes.at(leaf2_idx);
+                glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
+                if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
+                    intersections.push(std::make_pair(margins2.x, node2));
+                }
+            }
         }
+
+
 
         // TODO: repeat the above loop for the recursive ray-tracing
 
