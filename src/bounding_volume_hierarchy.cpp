@@ -189,29 +189,6 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
-glm::vec2 BoundingVolumeHierarchy::getMarginsIntersection(AxisAlignedBox box, Ray ray) const {
-    float txmin = (box.lower.x - ray.origin.x) / ray.direction.x;
-    float tymin = (box.lower.y - ray.origin.y) / ray.direction.y;
-    float tzmin = (box.lower.z - ray.origin.z) / ray.direction.z;
-
-    float txmax = (box.upper.x - ray.origin.x) / ray.direction.x;
-    float tymax = (box.upper.y - ray.origin.y) / ray.direction.y;
-    float tzmax = (box.upper.z - ray.origin.z) / ray.direction.z;
-
-    float txin = fminf(txmax, txmin);
-    float tyin = fminf(tymax, tymin);
-    float tzin = fminf(tzmax, tzmin);
-
-    float txout = fmaxf(txmax, txmin);
-    float tyout = fmaxf(tymax, tymin);
-    float tzout = fmaxf(tzmax, tzmin);
-
-    float tin = fmaxf(txin, fmaxf(tyin, tzin));
-    float tout = fminf(txout, fminf(tyout, tzout));
-
-    return glm::vec2{tin, tout};
-}
-
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
@@ -247,19 +224,28 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         for (const auto& sphere : m_pScene->spheres)
             hit |= intersectRayWithShape(sphere, ray, hitInfo);
         return hit;
+
     } else {
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-
         bool hit = false;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
+
         // We start with the first AABB
         Node root = createdNodes.at(0);
-        glm::vec2 margins = getMarginsIntersection(root.bounds, ray);
 
-        if(margins.x <= margins.y && margins.y >= 0.0f) {
-            intersections.push(std::make_pair( margins.x, root));
+        float initial_t = ray.t;
+        bool check = intersectRayWithShape(root.bounds, ray);
+        float t = ray.t;
+        ray.t = initial_t;
+
+        if(check) {
+            if(t >= 0.0f) {
+                intersections.push(std::make_pair( t, root));
+            } else {
+                intersections.push(std::make_pair( 0.0f, root));
+            }
 
             while (!intersections.empty()) {
                 pair current_pair = intersections.top();
@@ -278,55 +264,33 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     int leaf1_idx = std::get<0>(current.indexes.at(0));
                     int leaf2_idx = std::get<1>(current.indexes.at(0));
 
-                    // Set order of child nodes based on hit distance
-//                    if(leaf1_idx != -1 && leaf2_idx != -1) {
-//                        Node node1 = createdNodes.at(leaf1_idx);
-//                        Node node2 = createdNodes.at(leaf2_idx);
-//
-//                        if(intersectRayWithShape(node1.bounds, initial_ray)) {
-//                            intersections.push(std::make_pair(initial_ray.t, node1));
-//                            initial_ray = ray;
-//                            if(intersectRayWithShape(node2.bounds, initial_ray)) {
-//                                intersections.push(std::make_pair(initial_ray.t, node2));
-//                            }
-//                        } else if(intersectRayWithShape(node2.bounds, initial_ray)) {
-//                            intersections.push(std::make_pair(initial_ray.t, node2));
-//                        }
-//                    } else if(leaf1_idx != -1) {
-//                        Node node1 = createdNodes.at(leaf1_idx);
-//                        if(intersectRayWithShape(node1.bounds, initial_ray)) {
-//                            intersections.push(std::make_pair(initial_ray.t, node1));
-//                        }
-//                    } else if(leaf2_idx != -1){
-//                        Node node2 = createdNodes.at(leaf2_idx);
-//                        if(intersectRayWithShape(node2.bounds, initial_ray)) {
-//                            intersections.push(std::make_pair(initial_ray.t, node2));
-//                        }
-//                    }
-                    if(leaf1_idx != -1 && leaf2_idx != -1) {
+                    if(leaf1_idx != -1) {
                         Node node1 = createdNodes.at(leaf1_idx);
-                        Node node2 = createdNodes.at(leaf2_idx);
+                        initial_t = ray.t;
+                        bool check1 = intersectRayWithShape(node1.bounds, ray);
+                        float t1 = ray.t;
+                        ray.t = initial_t;
+                        if (check1) {
+                            if (t1 >= 0.0f) {
+                                intersections.push(std::make_pair(t1, node1));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node1));
+                            }
+                        }
+                    }
 
-                        glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
-                        glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
-
-                        if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
-                            intersections.push(std::make_pair(margins1.x, node1));
-                        }
-                        if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
-                            intersections.push(std::make_pair(margins2.x, node2));
-                        }
-                    } else if(leaf1_idx != -1) {
-                        Node node1 = createdNodes.at(leaf1_idx);
-                        glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
-                        if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
-                            intersections.push(std::make_pair(margins1.x, node1));
-                        }
-                    } else if(leaf2_idx != -1) {
+                    if(leaf2_idx != -1) {
                         Node node2 = createdNodes.at(leaf2_idx);
-                        glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
-                        if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
-                            intersections.push(std::make_pair(margins2.x, node2));
+                        initial_t = ray.t;
+                        bool check2 = intersectRayWithShape(node2.bounds, ray);
+                        float t2 = ray.t;
+                        ray.t = initial_t;
+                        if(check2) {
+                            if(t2 >= 0.0f) {
+                                intersections.push(std::make_pair(t2, node2));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node2));
+                            }
                         }
                     }
                 } else {
@@ -348,40 +312,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     }
                 }
             }
-        } else {
-            int leaf1_idx = std::get<0>(root.indexes.at(0));
-            int leaf2_idx = std::get<1>(root.indexes.at(0));
-
-            if(leaf1_idx != -1 && leaf2_idx != -1) {
-                Node node1 = createdNodes.at(leaf1_idx);
-                Node node2 = createdNodes.at(leaf2_idx);
-
-                glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
-                glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
-
-                if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
-                    intersections.push(std::make_pair(margins1.x, node1));
-                }
-                if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
-                    intersections.push(std::make_pair(margins2.x, node2));
-                }
-            } else if(leaf1_idx != -1) {
-                Node node1 = createdNodes.at(leaf1_idx);
-                glm::vec2 margins1 = getMarginsIntersection(node1.bounds, ray);
-                if(margins1.x <= margins1.y && margins1.y >= 0.0f) {
-                    intersections.push(std::make_pair(margins1.x, node1));
-                }
-            } else if(leaf2_idx != -1) {
-                Node node2 = createdNodes.at(leaf2_idx);
-                glm::vec2 margins2 = getMarginsIntersection(node2.bounds, ray);
-                if(margins2.x <= margins2.y && margins2.y >= 0.0f) {
-                    intersections.push(std::make_pair(margins2.x, node2));
-                }
-            }
         }
-
-
-
         // TODO: repeat the above loop for the recursive ray-tracing
 
         // Intersect with spheres which is not supported by the BVH

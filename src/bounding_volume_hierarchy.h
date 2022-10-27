@@ -32,7 +32,6 @@ public:
 private:
     Vertex computeCentroid(int mesh, glm::uvec3 triangle);
     std::vector<Vertex> getTriangleVertices(int mesh, glm::uvec3 triangle);
-    glm::vec2 getMarginsIntersection(AxisAlignedBox box, Ray ray) const;
 
     struct Node {
         AxisAlignedBox bounds = {
