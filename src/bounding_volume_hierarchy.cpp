@@ -14,7 +14,9 @@ const std::vector<float> BoundingVolumeHierarchy::splitBins { 1.0/6, 0.25, 2.0/6
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
-    int desiredLevel = 8;
+    constexpr int MAX_LEVEL = 8;
+    constexpr int MIN_TRIANGLES_IN_LEAF = 4;
+
     Node root;
     // distribute world triangles
     for (int i = 0; i < m_pScene->meshes.size(); ++i) {
@@ -34,9 +36,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
         Node& n = createdNodes.at(n_idx);
 
         n.bounds = getAABBFromTriangles(n.indexes);
-        // if it's a leaf
-        if (n.level >= desiredLevel || n.indexes.size() < 2) {
-            // we quit calculations at this point
+        if (n.level >= MAX_LEVEL || n.indexes.size() <= MIN_TRIANGLES_IN_LEAF) {
+            // We make this node a leaf
             n.isLeaf = true;
             ++m_numLeaves;
             n.leafNumber = m_numLeaves;
@@ -58,7 +59,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
             getBestSplit(n, axises, calcAABBthresholds(n.bounds, axises, splitBins), left, right);
         }
        
-        // store them in the list and update current node's index
+        // Store them in the list and update current node's index
         int left_idx = -1;
         int right_idx = -1;
 
@@ -85,21 +86,6 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
 // slider in the UI how many steps it should display for Visual Debug 1.
 int BoundingVolumeHierarchy::numLevels() const
 {
-    static bool firstTime = true;
-
-    if (firstTime) {
-        std::cout << "There are " << createdNodes.size() << " nodes.";
-        for (auto n : createdNodes) {
-            std::cout << "I am a node level " << n.level << '\n';
-            if (n.isLeaf) {
-                std::cout << "Node with " << n.indexes.size() << " triangles in a leaf number " << n.leafNumber << '\n';
-            }
-        }
-
-        firstTime = false;
-    }
-    
-
     return createdNodes.back().level + 1;
 }
 
@@ -316,9 +302,13 @@ void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector
             float cost_left = calcSplitCost(indexesLeft);
             float cost_right = calcSplitCost(indexesRight);
 
+            // We want to penalize a division, where we keep all triangles in one child node
+            if (indexesLeft.size() == 0 || indexesRight.size() == 0)
+                cost_left += FLOAT_MAX / 2 - 1;
+
             if (cost_left + cost_right < bestCost) {
                 bestCost = cost_left + cost_right;
-                // save best setting
+                // Save best setting
                 left.indexes = indexesLeft;
                 right.indexes = indexesRight;
             }
