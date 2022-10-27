@@ -28,7 +28,6 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
     } break;
     case CubeTextured: {
         auto subMeshes = loadMesh(dataDir / "cube-textured.obj");
-        subMeshes[0].material.kdTexture = std::shared_ptr<Image>(new Image(dataDir / "default.png"));
         std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
         scene.lights.emplace_back(PointLight { glm::vec3(-1.0, 1.5, -1.0), glm::vec3(1) });
     } break;

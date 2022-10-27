@@ -41,6 +41,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     HitInfo hitInfo;
     if (bvh.intersect(ray, hitInfo, features)) {
 
+        
+
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
         
@@ -55,7 +57,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             drawShadowRays(scene, ray, bvh, hitInfo, features);
         }
 
-        if (features.enableTextureMapping && hitInfo.material.kdTexture) {
+        if (features.enableTextureMapping && hitInfo.material.kdTexture && !features.enableShading) {
             return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
         }
 
