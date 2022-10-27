@@ -49,7 +49,7 @@ private:
     float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
     void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
     void getBestSplit(const Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right);
-    float calcSplitCost(const IndexTuple& indexes, float parentVolume);
+    float calcSplitCost(const IndexTuple& indexes);
     float calcAABBvolume(const AxisAlignedBox& aabb);
     std::vector<float> calcAABBthresholds(const AxisAlignedBox& aabb, const std::vector<int>& axises, const std::vector<float>& thresholds);
 

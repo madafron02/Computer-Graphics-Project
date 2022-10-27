@@ -38,8 +38,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
         if (n.level >= desiredLevel || n.indexes.size() < 2) {
             // we quit calculations at this point
             n.isLeaf = true;
-            n.leafNumber = m_numLeaves;
             ++m_numLeaves;
+            n.leafNumber = m_numLeaves;
             continue;
         }
          
@@ -61,6 +61,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
         // store them in the list and update current node's index
         int left_idx = -1;
         int right_idx = -1;
+
         if (left.indexes.size() > 0) {
             left_idx = createdNodes.size();
             toDivide.push(left_idx);
@@ -84,6 +85,21 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
 // slider in the UI how many steps it should display for Visual Debug 1.
 int BoundingVolumeHierarchy::numLevels() const
 {
+    static bool firstTime = true;
+
+    if (firstTime) {
+        std::cout << "There are " << createdNodes.size() << " nodes.";
+        for (auto n : createdNodes) {
+            std::cout << "I am a node level " << n.level << '\n';
+            if (n.isLeaf) {
+                std::cout << "Node with " << n.indexes.size() << " triangles in a leaf number " << n.leafNumber << '\n';
+            }
+        }
+
+        firstTime = false;
+    }
+    
+
     return createdNodes.back().level + 1;
 }
 
@@ -297,8 +313,8 @@ void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector
             splitTrianglesByAxisAndThreshold(parent.indexes, axises.at(i), thresholds.at(i * thresholds_per_axis + j), 
                 indexesLeft, indexesRight);
 
-            float cost_left = calcSplitCost(indexesLeft, parentVolume);
-            float cost_right = calcSplitCost(indexesRight, parentVolume);
+            float cost_left = calcSplitCost(indexesLeft);
+            float cost_right = calcSplitCost(indexesRight);
 
             if (cost_left + cost_right < bestCost) {
                 bestCost = cost_left + cost_right;
@@ -310,14 +326,14 @@ void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector
     }
 }
 
-float BoundingVolumeHierarchy::calcSplitCost(const IndexTuple& indexes, float parentVolume)
+float BoundingVolumeHierarchy::calcSplitCost(const IndexTuple& indexes)
 {
     float cost = 0;
 
     if (indexes.size() > 0) {
         float leftVolume = calcAABBvolume(getAABBFromTriangles(indexes));
 
-        cost = (leftVolume / parentVolume) * indexes.size();
+        cost = leftVolume * indexes.size();
     }
     return cost;
 }
