@@ -9,8 +9,6 @@
 #include <stack>
 #include <glm/glm.hpp>
 
-
-
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
 {
@@ -196,6 +194,15 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
+    typedef std::pair<float, Node> pair;
+    struct Comparator
+    {
+        bool operator() (const pair &lhs, const pair &rhs) const
+        {
+            return lhs.first > rhs.first;
+        }
+    };
+
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -223,14 +230,14 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
         // We need to call functions on copies of the ray or otherwise the small ray.t will make the
         // intersect functions always fail.
-        
         bool hit = false;
-        std::stack<Node> intersections;
+        std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
         // We start with the first AABB
-        intersections.push(createdNodes.at(0));
+        intersections.push(std::make_pair(ray.t, createdNodes.at(0)));
 
         while (!intersections.empty()) {
-            Node current = intersections.top();
+            pair current_pair = intersections.top();
+            Node current = current_pair.second;
             intersections.pop();
 
             Ray initial_ray = ray;
@@ -242,10 +249,33 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
             if (!current.isLeaf) {
                 int leaf1_idx = std::get<0>(current.indexes.at(0));
                 int leaf2_idx = std::get<1>(current.indexes.at(0));
-                if (leaf1_idx != -1)
-                    intersections.push(createdNodes.at(leaf1_idx));
-                if (leaf2_idx != -1)
-                    intersections.push(createdNodes.at(leaf2_idx));
+                float original_t = initial_ray.t;
+
+                // Set order of child nodes based on hit distance
+                if(leaf1_idx != -1 && leaf2_idx != -1) {
+                    Node node1 = createdNodes.at(leaf1_idx);
+                    Node node2 = createdNodes.at(leaf2_idx);
+
+                    if(intersectRayWithShape(node1.bounds, initial_ray)) {
+                        intersections.push(std::make_pair(initial_ray.t, node1));
+                        if(intersectRayWithShape(node2.bounds, initial_ray)) {
+                            intersections.push(std::make_pair(initial_ray.t, node2));
+                        }
+                    } else if(intersectRayWithShape(node2.bounds, initial_ray)) {
+                        intersections.push(std::make_pair(initial_ray.t, node2));
+                    }
+                } else if(leaf1_idx != -1) {
+                    Node node1 = createdNodes.at(leaf1_idx);
+                    if(intersectRayWithShape(node1.bounds, initial_ray)) {
+                        intersections.push(std::make_pair(initial_ray.t, node1));
+                    }
+                } else if(leaf2_idx != -1){
+                    Node node2 = createdNodes.at(leaf2_idx);
+                    if(intersectRayWithShape(node2.bounds, initial_ray)) {
+                        intersections.push(std::make_pair(initial_ray.t, node2));
+                    }
+                }
+                initial_ray.t = original_t;
 
             } else {
                 // This is a leaf: we check if any of the triangles is closer than any other
