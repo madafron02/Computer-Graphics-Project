@@ -16,7 +16,7 @@ public:
 
     void writeBitmapToFile(const std::filesystem::path& filePath);
     void draw();
-    void applyBloomFilter();
+    void applyBloomFilter(float threshold, int filterSize);
 
     [[nodiscard]] glm::ivec2 resolution() const;
 

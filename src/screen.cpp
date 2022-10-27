@@ -143,14 +143,21 @@ int Screen::indexAt(int x, int y) const
     return (m_resolution.y - 1 - y) * m_resolution.x + x;
 }
 
-void Screen::applyBloomFilter()
+void Screen::applyBloomFilter(float threshold, int filterSize)
 {
-    constexpr float threshold = 0.9;
-    constexpr int filterSize = 1;
+
     // m_textureData
     // 1. Threshold values
     std::vector<glm::vec3> pixels(m_textureData.size());
 
+    int counter = 0;
+    for (auto color : m_textureData) {
+        if (color.x >= threshold || color.y >= threshold || color.z >= threshold) {
+            ++counter;
+        }
+    }
+    std::cout << "THERE ARE " << counter << " THRESHOLDED PIXELS \n";
+    
     std::transform(std::begin(m_textureData), std::end(m_textureData), std::begin(pixels),
         [threshold](const glm::vec3& color) {
             return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : glm::vec3 { 0.0f, 0.0f, 0.0f };
@@ -158,6 +165,9 @@ void Screen::applyBloomFilter()
 
     // 2. Apply box filter
     std::vector<glm::vec3> pixels_boxFilter(m_textureData.size());
+#ifdef NDEBUG
+#pragma omp parallel for schedule(guided)
+#endif
     for (int i = 0; i < m_resolution.x; ++i) {
         for (int j = 0; j < m_resolution.y; ++j) {
             for (int col = 0; col < 3; ++col) {
