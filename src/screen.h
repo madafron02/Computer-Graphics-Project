@@ -16,6 +16,7 @@ public:
 
     void writeBitmapToFile(const std::filesystem::path& filePath);
     void draw();
+    void applyBloomFilter();
 
     [[nodiscard]] glm::ivec2 resolution() const;
 
@@ -26,6 +27,8 @@ public:
     [[nodiscard]] std::vector<glm::vec3>& pixels();
 
 private:
+    float boxFilter(const std::vector<glm::vec3>& source, int i, int j, int col, int filterSize);
+
     bool m_presentable;
     glm::ivec2 m_resolution;
     std::vector<glm::vec3> m_textureData;

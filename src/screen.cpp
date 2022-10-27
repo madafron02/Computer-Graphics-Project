@@ -5,6 +5,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/common.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 DISABLE_WARNINGS_POP()
@@ -117,7 +118,57 @@ std::vector<glm::vec3>& Screen::pixels()
     return m_textureData;
 }
 
+float Screen::boxFilter(const std::vector<glm::vec3>& source, int i, int j, int col, int filterSize)
+{
+    if (filterSize < 1)
+        filterSize = 1;
+
+    float sum = 0;
+    for (int x = -filterSize; x < filterSize + 1; ++x) {
+        for (int y = -filterSize; y < filterSize + 1; ++y) {
+            try {
+                sum += source.at(indexAt(i + x, j + y))[col];
+            } 
+            catch (const std::out_of_range& e) {
+                sum += 0.0f; // out of range: assume color is black.
+            }
+        }
+    }
+
+    return sum / ((2 * filterSize + 1) * (2 * filterSize + 1));
+}
+
 int Screen::indexAt(int x, int y) const
 {
     return (m_resolution.y - 1 - y) * m_resolution.x + x;
+}
+
+void Screen::applyBloomFilter()
+{
+    constexpr float threshold = 0.9;
+    constexpr int filterSize = 1;
+    // m_textureData
+    // 1. Threshold values
+    std::vector<glm::vec3> pixels(m_textureData.size());
+
+    std::transform(std::begin(m_textureData), std::end(m_textureData), std::begin(pixels),
+        [threshold](const glm::vec3& color) {
+            return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : glm::vec3 { 0.0f, 0.0f, 0.0f };
+        });
+
+    // 2. Apply box filter
+    std::vector<glm::vec3> pixels_boxFilter(m_textureData.size());
+    for (int i = 0; i < m_resolution.x; ++i) {
+        for (int j = 0; j < m_resolution.y; ++j) {
+            for (int col = 0; col < 3; ++col) {
+                pixels_boxFilter.at(indexAt(i, j))[col] = boxFilter(pixels, i, j, col, filterSize);
+            }
+        }
+    }
+
+    // 3. Scale
+
+    // 4. Add result to the pixels
+
+    m_textureData = pixels_boxFilter;
 }
