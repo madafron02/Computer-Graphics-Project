@@ -204,6 +204,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         }
     };
 
+    Vertex vf0, vf1, vf2;
+
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -229,6 +231,12 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
+
+        // DEBUG DETAILS:
+        // -> all intersected AABB's in blue
+        // -> all intersected but not visited AABB's in orange
+        // -> final triangle in green
+
         bool hit = false;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
 
@@ -241,6 +249,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         ray.t = initial_t;
 
         if(check) {
+            if(enableDebugDraw) drawAABB(root.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
             if(t >= 0.0f) {
                 intersections.push(std::make_pair( t, root));
             } else {
@@ -271,6 +280,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         float t1 = ray.t;
                         ray.t = initial_t;
                         if (check1) {
+                            if(enableDebugDraw) drawAABB(node1.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
                             if (t1 >= 0.0f) {
                                 intersections.push(std::make_pair(t1, node1));
                             } else {
@@ -286,6 +296,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         float t2 = ray.t;
                         ray.t = initial_t;
                         if(check2) {
+                            if(enableDebugDraw) drawAABB(node2.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
                             if(t2 >= 0.0f) {
                                 intersections.push(std::make_pair(t2, node2));
                             } else {
@@ -309,12 +320,16 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                             hitInfo.material = mesh.material;
                             hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                             hit = true;
+
+                            vf0 = v0; vf1 = v1; vf2 = v2;
                         }
                     }
                 }
             }
         }
-        // TODO: repeat the above loop for the recursive ray-tracing
+
+        if(enableDebugDraw && hit)
+            drawColoredTriangle(vf0, vf1, vf2, glm::vec3{0.0f, 1.0f, 0.0f});
 
         // Intersect with spheres which is not supported by the BVH
         for (const auto& sphere : m_pScene->spheres)
