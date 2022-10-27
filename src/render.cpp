@@ -53,24 +53,19 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         if (features.enableRecursive && rayDepth < 10 && (hitInfo.material.ks.x> 0 || hitInfo.material.ks.y > 0 || hitInfo.material.ks.z > 0)) {
 
             Ray reflected = computeReflectionRay(ray, hitInfo);
-            glm::vec3 ligthReflection = glm::vec3 { 0, 0, 0 };
+            glm::vec3 lightReflection = glm::vec3 { 0, 0, 0 };
 
             reflected.origin += hitInfo.normal * std::numeric_limits<float>::epsilon();
-            ;
-            if (bvh.intersect(reflected, hitInfo, features)) {
 
-
-                ligthReflection = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
-                if (features.enableRecursive) {
-                    drawRay(reflected, ligthReflection);
-                }
-            } else {
-                if (features.enableRecursive) {
-                    drawRay(reflected, { 1, 0, 0 });
+            lightReflection = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
+            if (features.enableRecursive) {
+                if(lightReflection == glm::vec3{0.0f}) {
+                    drawRay(reflected, glm::vec3{1.0f, 0.0f, 0.0f});
+                } else {
+                    drawRay(reflected, lightReflection);
                 }
             }
-
-            return Lo + ligthReflection;
+            return Lo + lightReflection;
         }
         
         return Lo;
