@@ -299,7 +299,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 if(!intersectRayWithShape(current.bounds, ray_copy)) {
                     continue;
                 } else if(last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
-                    drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
+                    if(enableDebugDraw) drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
                     continue;
                 }
 
@@ -350,22 +350,51 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         const auto v2 = mesh.vertices[triangle[2]];
 
                         if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray_copy, hitInfo)) {
-                            // TODO: somewhere here we need to consider the `features.enableNormalInterp`
-                            // and `features.enableTextureMapping` options
                             last_primitive_t = ray_copy.t;
                             hitInfo.material = mesh.material;
                             hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                             hit = true;
-
                             vf0 = v0; vf1 = v1; vf2 = v2;
+
+                            if(features.enableNormalInterp) {
+                                hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+                            }
+                            if (features.enableTextureMapping) {
+                                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                            }
                         }
                     }
                 }
             }
         }
 
-        if(enableDebugDraw && hit)
+        if(enableDebugDraw && hit) {
             drawColoredTriangle(vf0, vf1, vf2, glm::vec3{0.0f, 1.0f, 0.0f});
+
+            if (features.enableNormalInterp) {
+                glm::vec3 interpolatedNormal = interpolateNormal(vf0.normal, vf1.normal, vf2.normal, hitInfo.barycentricCoord);
+                Ray normal0 = { vf0.position,
+                    normalize(vf0.normal),
+                    1 };
+
+                Ray normal1 = { vf1.position,
+                    normalize(vf1.normal),
+                    1 };
+
+                Ray normal2 = { vf2.position,
+                    normalize(vf2.normal),
+                    1 };
+
+                Ray interpolated = { ray.origin + ray.t * ray.direction,
+                    normalize(interpolatedNormal),
+                    1 };
+
+                drawRay(normal0, { 0, 1, 0 });
+                drawRay(normal1, { 0, 1, 0 });
+                drawRay(normal2, { 0, 1, 0 });
+                drawRay(interpolated, { 1, 0, 0 });
+            }
+        }
 
         // Intersect with spheres which is not supported by the BVH
         for (const auto& sphere : m_pScene->spheres)
