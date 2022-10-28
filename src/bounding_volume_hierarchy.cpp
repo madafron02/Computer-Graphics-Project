@@ -8,8 +8,7 @@
 #include <queue>
 #include <stack>
 #include <glm/glm.hpp>
-
-
+#include <iostream>
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
@@ -196,6 +195,17 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
+    typedef std::pair<float, Node> pair;
+    struct Comparator
+    {
+        bool operator() (const pair &lhs, const pair &rhs) const
+        {
+            return lhs.first < rhs.first;
+        }
+    };
+
+    Vertex vf0, vf1, vf2;
+
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -206,67 +216,185 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v1 = mesh.vertices[tri[1]];
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+
+                    hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray.origin + ray.t * ray.direction);
+
                     hitInfo.material = mesh.material;
                     hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     hit = true;
+
+                    
+                    if (features.enableTextureMapping) {
+                        hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                    }
+
+                    if (features.enableNormalInterp) {
+                        glm::vec3 interpolatNormal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                        Ray normal0 = { v0.position,
+                            normalize(v0.normal),
+                            1 };
+
+                        Ray normal1 = { v1.position,
+                            normalize(v1.normal),
+                            1 };
+
+                        Ray normal2 = { v2.position,
+                            normalize(v2.normal),
+                            1 };
+
+                        Ray interpolated = { ray.origin + ray.t * ray.direction,
+                            normalize(interpolatNormal),
+                            1 };
+
+                        drawRay(normal0, { 0, 1, 0 });
+                        drawRay(normal1, { 0, 1, 0 });
+                        drawRay(normal2, { 0, 1, 0 });
+                        drawRay(interpolated, { 1, 0, 0 });
+                    }
+                    
                 }
+
+                
             }
         }
         // Intersect with spheres.
         for (const auto& sphere : m_pScene->spheres)
             hit |= intersectRayWithShape(sphere, ray, hitInfo);
         return hit;
+
     } else {
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
 
-        // We need to call functions on copies of the ray or otherwise the small ray.t will make the
-        // intersect functions always fail.
-        
+        // DEBUG DETAILS:
+        // -> all intersected AABB's in blue
+        // -> all intersected but not visited AABB's in orange
+        // -> final triangle in green
+
         bool hit = false;
-        std::stack<Node> intersections;
+        float last_primitive_t = -1.0f;
+        std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
+
         // We start with the first AABB
-        intersections.push(createdNodes.at(0));
+        Node root = createdNodes.at(0);
 
-        while (!intersections.empty()) {
-            Node current = intersections.top();
-            intersections.pop();
+        Ray ray_copy = ray;
+        bool check = intersectRayWithShape(root.bounds, ray_copy);
 
-            Ray initial_ray = ray;
-            if (!intersectRayWithShape(current.bounds, initial_ray))
-                continue;
-
-            // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
-            // (if it's a leaf):
-            if (!current.isLeaf) {
-                int leaf1_idx = std::get<0>(current.indexes.at(0));
-                int leaf2_idx = std::get<1>(current.indexes.at(0));
-                if (leaf1_idx != -1)
-                    intersections.push(createdNodes.at(leaf1_idx));
-                if (leaf2_idx != -1)
-                    intersections.push(createdNodes.at(leaf2_idx));
-
+        if(check) {
+            if(enableDebugDraw) drawAABB(root.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+            if(ray_copy.t >= 0.0f) {
+                intersections.push(std::make_pair( ray_copy.t, root));
             } else {
-                // This is a leaf: we check if any of the triangles is closer than any other
-                for (const auto& idx : current.indexes) {
-                    const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
-                    const auto& triangle = mesh.triangles.at(std::get<1>(idx));
-                    const auto v0 = mesh.vertices[triangle[0]];
-                    const auto v1 = mesh.vertices[triangle[1]];
-                    const auto v2 = mesh.vertices[triangle[2]];
-                    if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
-                        // TODO: somewhere here we need to consider the `features.enableNormalInterp` 
-                        // and `features.enableTextureMapping` options
-                        hitInfo.material = mesh.material;
-                        hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
-                        hit = true;
+                intersections.push(std::make_pair( 0.0f, root));
+            }
+
+            while (!intersections.empty()) {
+                pair current_pair = intersections.top();
+                Node current = current_pair.second;
+                intersections.pop();
+
+                ray_copy = ray;
+                if(!intersectRayWithShape(current.bounds, ray_copy)) {
+                    continue;
+                } else if(last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
+                    if(enableDebugDraw) drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
+                    continue;
+                }
+
+                // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
+                // (if it's a leaf):
+                if (!current.isLeaf) {
+                    int leaf1_idx = std::get<0>(current.indexes.at(0));
+                    int leaf2_idx = std::get<1>(current.indexes.at(0));
+
+                    if(leaf1_idx != -1) {
+                        Node node1 = createdNodes.at(leaf1_idx);
+                        ray_copy = ray;
+                        bool check1 = intersectRayWithShape(node1.bounds, ray_copy);
+
+                        if (check1) {
+                            if(enableDebugDraw) drawAABB(node1.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+                            if (ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node1));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node1));
+                            }
+                        }
+                    }
+
+                    if(leaf2_idx != -1) {
+                        Node node2 = createdNodes.at(leaf2_idx);
+                        ray_copy = ray;
+                        bool check2 = intersectRayWithShape(node2.bounds, ray_copy);
+
+                        if(check2) {
+                            if(enableDebugDraw) drawAABB(node2.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+                            if(ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node2));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node2));
+                            }
+                        }
+                    }
+                } else {
+                    // This is a leaf: we check if any of the triangles is closer than any other
+                    ray_copy = ray;
+
+                    for (const auto& idx : current.indexes) {
+                        const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
+                        const auto& triangle = mesh.triangles.at(std::get<1>(idx));
+                        const auto v0 = mesh.vertices[triangle[0]];
+                        const auto v1 = mesh.vertices[triangle[1]];
+                        const auto v2 = mesh.vertices[triangle[2]];
+
+                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray_copy, hitInfo)) {
+                            last_primitive_t = ray_copy.t;
+                            hitInfo.material = mesh.material;
+                            hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                            hit = true;
+                            vf0 = v0; vf1 = v1; vf2 = v2;
+
+                            if(features.enableNormalInterp) {
+                                hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+                            }
+                            if (features.enableTextureMapping) {
+                                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // TODO: repeat the above loop for the recursive ray-tracing
+        if(enableDebugDraw && hit) {
+            drawColoredTriangle(vf0, vf1, vf2, glm::vec3{0.0f, 1.0f, 0.0f});
+
+            if (features.enableNormalInterp) {
+                glm::vec3 interpolatedNormal = interpolateNormal(vf0.normal, vf1.normal, vf2.normal, hitInfo.barycentricCoord);
+                Ray normal0 = { vf0.position,
+                    normalize(vf0.normal),
+                    1 };
+
+                Ray normal1 = { vf1.position,
+                    normalize(vf1.normal),
+                    1 };
+
+                Ray normal2 = { vf2.position,
+                    normalize(vf2.normal),
+                    1 };
+
+                Ray interpolated = { ray.origin + ray.t * ray.direction,
+                    normalize(interpolatedNormal),
+                    1 };
+
+                drawRay(normal0, { 0, 1, 0 });
+                drawRay(normal1, { 0, 1, 0 });
+                drawRay(normal2, { 0, 1, 0 });
+                drawRay(interpolated, { 1, 0, 0 });
+            }
+        }
 
         // Intersect with spheres which is not supported by the BVH
         for (const auto& sphere : m_pScene->spheres)
