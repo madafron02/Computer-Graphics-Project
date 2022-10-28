@@ -356,9 +356,9 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                             hit = true;
                             vf0 = v0; vf1 = v1; vf2 = v2;
 
-                            if(features.enableNormalInterp) {
-                                hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
-                            }
+                            
+                            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+
                             if (features.enableTextureMapping) {
                                 hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
                             }
@@ -366,6 +366,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     }
                 }
             }
+
+            if(hit) ray.t = last_primitive_t;
         }
 
         if(enableDebugDraw && hit) {
@@ -399,6 +401,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // Intersect with spheres which is not supported by the BVH
         for (const auto& sphere : m_pScene->spheres)
             hit |= intersectRayWithShape(sphere, ray, hitInfo);
+
         return hit;
     }
 }
