@@ -189,6 +189,14 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
+bool BoundingVolumeHierarchy::checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const{
+    glm::vec3 origin = ray.origin;
+    if(origin.x >= aabb.lower.x && origin.y >= aabb.lower.y && origin.z >= aabb.lower.z
+            && origin.x <= aabb.upper.x && origin.y <= aabb.upper.y && origin.z <= aabb.upper.z)
+        return true;
+    return false;
+}
+
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
@@ -281,6 +289,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
         Ray ray_copy = ray;
         bool check = intersectRayWithShape(root.bounds, ray_copy);
+        if(checkRayOriginInsideAABB(root.bounds, ray_copy)) check = true;
 
         if(check) {
             if(enableDebugDraw) drawAABB(root.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
@@ -296,7 +305,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 intersections.pop();
 
                 ray_copy = ray;
-                if(!intersectRayWithShape(current.bounds, ray_copy)) {
+                if(!intersectRayWithShape(current.bounds, ray_copy) && !checkRayOriginInsideAABB(root.bounds, ray_copy)) {
                     continue;
                 } else if(last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
                     if(enableDebugDraw) drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
@@ -313,6 +322,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         Node node1 = createdNodes.at(leaf1_idx);
                         ray_copy = ray;
                         bool check1 = intersectRayWithShape(node1.bounds, ray_copy);
+                        if(checkRayOriginInsideAABB(node1.bounds, ray_copy)) check1 = true;
 
                         if (check1) {
                             if(enableDebugDraw) drawAABB(node1.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
@@ -328,6 +338,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         Node node2 = createdNodes.at(leaf2_idx);
                         ray_copy = ray;
                         bool check2 = intersectRayWithShape(node2.bounds, ray_copy);
+                        if(checkRayOriginInsideAABB(node2.bounds, ray_copy)) check2 = true;
 
                         if(check2) {
                             if(enableDebugDraw) drawAABB(node2.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
