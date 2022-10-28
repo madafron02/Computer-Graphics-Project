@@ -145,6 +145,7 @@ int Screen::indexAt(int x, int y) const
 
 void Screen::applyBloomFilter(float threshold, int filterSize)
 {
+    constexpr int SCALE = 1.5;
 
     // m_textureData
     // 1. Threshold values
@@ -163,22 +164,20 @@ void Screen::applyBloomFilter(float threshold, int filterSize)
             return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : glm::vec3 { 0.0f, 0.0f, 0.0f };
         });
 
-    // 2. Apply box filter
-    std::vector<glm::vec3> pixels_boxFilter(m_textureData.size());
+    // 2. Apply box filter AND
+    // 3. Scale AND
+    // 4. Add result to the pixels
+
+    //std::vector<glm::vec3> pixels_boxFilter(m_textureData.size());
 #ifdef NDEBUG
 #pragma omp parallel for schedule(guided)
 #endif
     for (int i = 0; i < m_resolution.x; ++i) {
         for (int j = 0; j < m_resolution.y; ++j) {
             for (int col = 0; col < 3; ++col) {
-                pixels_boxFilter.at(indexAt(i, j))[col] = boxFilter(pixels, i, j, col, filterSize);
+                //pixels_boxFilter.at(indexAt(i, j))[col] = boxFilter(pixels, i, j, col, filterSize) * SCALE;
+                m_textureData.at(indexAt(i, j))[col] += boxFilter(pixels, i, j, col, filterSize) * SCALE;
             }
         }
     }
-
-    // 3. Scale
-
-    // 4. Add result to the pixels
-
-    m_textureData = pixels_boxFilter;
 }
