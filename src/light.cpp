@@ -141,6 +141,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
                             result += computeShading(position, color, features, ray, hitInfo);
+                        } else {
+                            bvh.intersect(softDebug, hitInfo, features);
+                            drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
                         }
                     }
                     lightSum += result / 100.0f;
@@ -161,6 +164,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
                             result += computeShading(position, color, features, ray, hitInfo);
+                        } else {
+                            bvh.intersect(softDebug, hitInfo, features);
+                            drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
                         }
                     }
                     lightSum += result / 100.0f;
@@ -196,6 +202,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
                             result += hitInfo.material.kd;
+                        } else {
+                            bvh.intersect(softDebug, hitInfo, features);
+                            drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
                         }
                     }
                     lightSum += result / 100.0f;
@@ -217,6 +226,9 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                         if(testVisibilityLightSample(position, color, bvh, features, ray, hitInfo) != 0.0) {
                             drawRay(softDebug, color);
                             result += hitInfo.material.kd;
+                        } else {
+                            bvh.intersect(softDebug, hitInfo, features);
+                            drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
                         }
                     }
                     lightSum += result / 100.0f;
