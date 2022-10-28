@@ -10,11 +10,19 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
 
     //check for mirrors !!!
 
+    if (features.enableTextureMapping && hitInfo.material.kdTexture) {
+        hitInfo.material.kd = acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
+    }
+
     glm::vec3 cameraToPoint = ray.origin + ray.t * ray.direction;
     glm::vec3 cameraToLight = lightPosition;
 
+    if (glm::dot(ray.direction, hitInfo.normal) * glm::dot(cameraToPoint - cameraToLight, hitInfo.normal) <= 0) {
+        return { 0, 0, 0 };
+    }
+
     glm::vec3 pointToLight = cameraToLight - cameraToPoint;
-    glm::vec3 diffuse = lightColor * hitInfo.material.kd * glm::max(0.0f, glm::dot(hitInfo.normal, normalize(pointToLight)));
+    glm::vec3 diffuse = lightColor * hitInfo.material.kd * glm::abs(glm::dot(hitInfo.normal, normalize(pointToLight)));
 
     glm::vec3 viewVec = cameraToPoint - ray.origin;
     glm::vec3 lightVec = lightPosition - cameraToPoint;
