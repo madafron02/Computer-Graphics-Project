@@ -142,8 +142,10 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                             drawRay(softDebug, color);
                             result += computeShading(position, color, features, ray, hitInfo);
                         } else {
+                            Ray prev = softDebug; HitInfo hi = hitInfo;
                             bvh.intersect(softDebug, hitInfo, features);
                             drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
+                            softDebug = prev; hitInfo = hi;
                         }
                     }
                     lightSum += result / 100.0f;
@@ -165,8 +167,10 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                             drawRay(softDebug, color);
                             result += computeShading(position, color, features, ray, hitInfo);
                         } else {
+                            Ray prev = softDebug; HitInfo hi = hitInfo;
                             bvh.intersect(softDebug, hitInfo, features);
                             drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
+                            softDebug = prev; hitInfo = hi;
                         }
                     }
                     lightSum += result / 100.0f;
@@ -203,8 +207,10 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                             drawRay(softDebug, color);
                             result += hitInfo.material.kd;
                         } else {
+                            Ray prev = softDebug; HitInfo hi = hitInfo;
                             bvh.intersect(softDebug, hitInfo, features);
                             drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
+                            softDebug = prev; hitInfo = hi;
                         }
                     }
                     lightSum += result / 100.0f;
@@ -227,8 +233,10 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
                             drawRay(softDebug, color);
                             result += hitInfo.material.kd;
                         } else {
+                            Ray prev = softDebug; HitInfo hi = hitInfo;
                             bvh.intersect(softDebug, hitInfo, features);
                             drawRay(softDebug, glm::vec3{1.0f, 0.0f, 0.0f});
+                            softDebug = prev; hitInfo = hi;
                         }
                     }
                     lightSum += result / 100.0f;
