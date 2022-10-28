@@ -6,10 +6,9 @@
 #include "texture.h"
 #include <limits>
 #include <queue>
+#include <stack>
 #include <glm/glm.hpp>
 #include <iostream>
-
-
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
@@ -43,20 +42,20 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
             // multiple times can be avoided
             auto vertices = getTriangleVertices(mesh_idx, triangle);
             for (auto v : vertices) {
-                if (v.position.x < n.min.x)
-                    n.min.x = v.position.x;
-                if (v.position.x > n.max.x)
-                    n.max.x = v.position.x;
+                if (v.position.x < n.bounds.lower.x)
+                    n.bounds.lower.x = v.position.x;
+                if (v.position.x > n.bounds.upper.x)
+                    n.bounds.upper.x = v.position.x;
 
-                if (v.position.y < n.min.y)
-                    n.min.y = v.position.y;
-                if (v.position.y > n.max.y)
-                    n.max.y = v.position.y;
+                if (v.position.y < n.bounds.lower.y)
+                    n.bounds.lower.y = v.position.y;
+                if (v.position.y > n.bounds.upper.y)
+                    n.bounds.upper.y = v.position.y;
 
-                if (v.position.z < n.min.z)
-                    n.min.z = v.position.z;
-                if (v.position.z > n.max.z)
-                    n.max.z = v.position.z;
+                if (v.position.z < n.bounds.lower.z)
+                    n.bounds.lower.z = v.position.z;
+                if (v.position.z > n.bounds.upper.z)
+                    n.bounds.upper.z = v.position.z;
             }
             
             // find division median
@@ -155,8 +154,7 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
         if (n.level != level)
             continue;
 
-        AxisAlignedBox aabb { n.min, n.max };
-        drawAABB(aabb, DrawMode::Wireframe);
+        drawAABB(n.bounds, DrawMode::Wireframe);
     }
 }
 
@@ -177,8 +175,7 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
 
     for (auto n : createdNodes) {
         if (n.isLeaf && n.leafNumber == leafIdx) {
-            AxisAlignedBox aabb { n.min, n.max };
-            drawAABB(aabb, DrawMode::Wireframe);
+            drawAABB(n.bounds, DrawMode::Wireframe);
 
             for (const std::tuple<int, int>& t : n.indexes) {
                 int mesh_idx = std::get<0>(t);
@@ -192,12 +189,31 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
+bool BoundingVolumeHierarchy::checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const{
+    glm::vec3 origin = ray.origin;
+    if(origin.x >= aabb.lower.x && origin.y >= aabb.lower.y && origin.z >= aabb.lower.z
+            && origin.x <= aabb.upper.x && origin.y <= aabb.upper.y && origin.z <= aabb.upper.z)
+        return true;
+    return false;
+}
+
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
+    typedef std::pair<float, Node> pair;
+    struct Comparator
+    {
+        bool operator() (const pair &lhs, const pair &rhs) const
+        {
+            return lhs.first < rhs.first;
+        }
+    };
+
+    Vertex vf0, vf1, vf2;
+
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -253,12 +269,151 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         for (const auto& sphere : m_pScene->spheres)
             hit |= intersectRayWithShape(sphere, ray, hitInfo);
         return hit;
+
     } else {
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
 
-        return false;
+        // DEBUG DETAILS:
+        // -> all intersected AABB's in blue
+        // -> all intersected but not visited AABB's in orange
+        // -> final triangle in green
+
+        bool hit = false;
+        float last_primitive_t = -1.0f;
+        std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
+
+        // We start with the first AABB
+        Node root = createdNodes.at(0);
+
+        Ray ray_copy = ray;
+        bool check = intersectRayWithShape(root.bounds, ray_copy);
+        if(checkRayOriginInsideAABB(root.bounds, ray_copy)) check = true;
+
+        if(check) {
+            if(enableDebugDraw) drawAABB(root.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+            if(ray_copy.t >= 0.0f) {
+                intersections.push(std::make_pair( ray_copy.t, root));
+            } else {
+                intersections.push(std::make_pair( 0.0f, root));
+            }
+
+            while (!intersections.empty()) {
+                pair current_pair = intersections.top();
+                Node current = current_pair.second;
+                intersections.pop();
+
+                ray_copy = ray;
+                if(!intersectRayWithShape(current.bounds, ray_copy) && !checkRayOriginInsideAABB(root.bounds, ray_copy)) {
+                    continue;
+                } else if(last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
+                    if(enableDebugDraw) drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
+                    continue;
+                }
+
+                // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
+                // (if it's a leaf):
+                if (!current.isLeaf) {
+                    int leaf1_idx = std::get<0>(current.indexes.at(0));
+                    int leaf2_idx = std::get<1>(current.indexes.at(0));
+
+                    if(leaf1_idx != -1) {
+                        Node node1 = createdNodes.at(leaf1_idx);
+                        ray_copy = ray;
+                        bool check1 = intersectRayWithShape(node1.bounds, ray_copy);
+                        if(checkRayOriginInsideAABB(node1.bounds, ray_copy)) check1 = true;
+
+                        if (check1) {
+                            if(enableDebugDraw) drawAABB(node1.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+                            if (ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node1));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node1));
+                            }
+                        }
+                    }
+
+                    if(leaf2_idx != -1) {
+                        Node node2 = createdNodes.at(leaf2_idx);
+                        ray_copy = ray;
+                        bool check2 = intersectRayWithShape(node2.bounds, ray_copy);
+                        if(checkRayOriginInsideAABB(node2.bounds, ray_copy)) check2 = true;
+
+                        if(check2) {
+                            if(enableDebugDraw) drawAABB(node2.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+                            if(ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node2));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node2));
+                            }
+                        }
+                    }
+                } else {
+                    // This is a leaf: we check if any of the triangles is closer than any other
+                    ray_copy = ray;
+
+                    for (const auto& idx : current.indexes) {
+                        const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
+                        const auto& triangle = mesh.triangles.at(std::get<1>(idx));
+                        const auto v0 = mesh.vertices[triangle[0]];
+                        const auto v1 = mesh.vertices[triangle[1]];
+                        const auto v2 = mesh.vertices[triangle[2]];
+
+                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray_copy, hitInfo)) {
+                            last_primitive_t = ray_copy.t;
+                            hitInfo.material = mesh.material;
+                            hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                            hit = true;
+                            vf0 = v0; vf1 = v1; vf2 = v2;
+
+                            
+                            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+
+                            if (features.enableTextureMapping) {
+                                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(hit) ray.t = last_primitive_t;
+        }
+
+        if(enableDebugDraw && hit) {
+            drawColoredTriangle(vf0, vf1, vf2, glm::vec3{0.0f, 1.0f, 0.0f});
+
+            if (features.enableNormalInterp) {
+                glm::vec3 interpolatedNormal = interpolateNormal(vf0.normal, vf1.normal, vf2.normal, hitInfo.barycentricCoord);
+                Ray normal0 = { vf0.position,
+                    normalize(vf0.normal),
+                    1 };
+
+                Ray normal1 = { vf1.position,
+                    normalize(vf1.normal),
+                    1 };
+
+                Ray normal2 = { vf2.position,
+                    normalize(vf2.normal),
+                    1 };
+
+                Ray interpolated = { ray.origin + ray.t * ray.direction,
+                    normalize(interpolatedNormal),
+                    1 };
+
+                drawRay(normal0, { 0, 1, 0 });
+                drawRay(normal1, { 0, 1, 0 });
+                drawRay(normal2, { 0, 1, 0 });
+                drawRay(interpolated, { 1, 0, 0 });
+            }
+        }
+
+        // Intersect with spheres which is not supported by the BVH
+        for (const auto& sphere : m_pScene->spheres)
+            hit |= intersectRayWithShape(sphere, ray, hitInfo);
+
+        return hit;
     }
 }
 

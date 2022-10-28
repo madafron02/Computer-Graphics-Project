@@ -56,6 +56,18 @@ void drawTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2 ) {
     glEnd();
 }
 
+void drawColoredTriangle (const Vertex& v0, const Vertex& v1, const Vertex& v2, const glm::vec3 color) {
+    glColor3f(color.r, color.g, color.b);
+    glBegin(GL_TRIANGLES);
+    glNormal3fv(glm::value_ptr(v0.normal));
+    glVertex3fv(glm::value_ptr(v0.position));
+    glNormal3fv(glm::value_ptr(v1.normal));
+    glVertex3fv(glm::value_ptr(v1.position));
+    glNormal3fv(glm::value_ptr(v2.normal));
+    glVertex3fv(glm::value_ptr(v2.position));
+    glEnd();
+}
+
 void drawMesh(const Mesh& mesh)
 {
     setMaterial(mesh.material);
