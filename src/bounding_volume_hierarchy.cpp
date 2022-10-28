@@ -238,20 +238,19 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // -> final triangle in green
 
         bool hit = false;
+        float last_primitive_t = -1.0f;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
 
         // We start with the first AABB
         Node root = createdNodes.at(0);
 
-        float initial_t = ray.t;
-        bool check = intersectRayWithShape(root.bounds, ray);
-        float t = ray.t;
-        ray.t = initial_t;
+        Ray ray_copy = ray;
+        bool check = intersectRayWithShape(root.bounds, ray_copy);
 
         if(check) {
             if(enableDebugDraw) drawAABB(root.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
-            if(t >= 0.0f) {
-                intersections.push(std::make_pair( t, root));
+            if(ray_copy.t >= 0.0f) {
+                intersections.push(std::make_pair( ray_copy.t, root));
             } else {
                 intersections.push(std::make_pair( 0.0f, root));
             }
@@ -261,11 +260,13 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 Node current = current_pair.second;
                 intersections.pop();
 
-                // We need to call functions on copies of the ray or otherwise the small ray.t will make the
-                // intersect functions always fail.
-                Ray initial_ray = ray;
-                if (!intersectRayWithShape(current.bounds, initial_ray))
+                ray_copy = ray;
+                if(!intersectRayWithShape(current.bounds, ray_copy)) {
                     continue;
+                } else if(last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
+                    drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
+                    continue;
+                }
 
                 // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
                 // (if it's a leaf):
@@ -275,14 +276,13 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                     if(leaf1_idx != -1) {
                         Node node1 = createdNodes.at(leaf1_idx);
-                        initial_t = ray.t;
-                        bool check1 = intersectRayWithShape(node1.bounds, ray);
-                        float t1 = ray.t;
-                        ray.t = initial_t;
+                        ray_copy = ray;
+                        bool check1 = intersectRayWithShape(node1.bounds, ray_copy);
+
                         if (check1) {
                             if(enableDebugDraw) drawAABB(node1.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
-                            if (t1 >= 0.0f) {
-                                intersections.push(std::make_pair(t1, node1));
+                            if (ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node1));
                             } else {
                                 intersections.push(std::make_pair(0.0f, node1));
                             }
@@ -291,14 +291,13 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
                     if(leaf2_idx != -1) {
                         Node node2 = createdNodes.at(leaf2_idx);
-                        initial_t = ray.t;
-                        bool check2 = intersectRayWithShape(node2.bounds, ray);
-                        float t2 = ray.t;
-                        ray.t = initial_t;
+                        ray_copy = ray;
+                        bool check2 = intersectRayWithShape(node2.bounds, ray_copy);
+
                         if(check2) {
                             if(enableDebugDraw) drawAABB(node2.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
-                            if(t2 >= 0.0f) {
-                                intersections.push(std::make_pair(t2, node2));
+                            if(ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node2));
                             } else {
                                 intersections.push(std::make_pair(0.0f, node2));
                             }
@@ -306,6 +305,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                     }
                 } else {
                     // This is a leaf: we check if any of the triangles is closer than any other
+                    ray_copy = ray;
+
                     for (const auto& idx : current.indexes) {
                         const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
                         const auto& triangle = mesh.triangles.at(std::get<1>(idx));
@@ -313,10 +314,10 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         const auto v1 = mesh.vertices[triangle[1]];
                         const auto v2 = mesh.vertices[triangle[2]];
 
-                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray_copy, hitInfo)) {
                             // TODO: somewhere here we need to consider the `features.enableNormalInterp`
                             // and `features.enableTextureMapping` options
-                            initial_t = ray.t;
+                            last_primitive_t = ray_copy.t;
                             hitInfo.material = mesh.material;
                             hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                             hit = true;
