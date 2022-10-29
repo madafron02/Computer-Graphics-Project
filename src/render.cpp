@@ -72,12 +72,15 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             Ray reflected = computeReflectionRay(ray, hitInfo);
             reflected.origin += reflected.direction * std::numeric_limits<float>::epsilon();
             glm::vec3 reflectColor = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
+            if(reflectColor == glm::vec3{0.0f}) {
+                drawRay(reflected, glm::vec3{1.0f, 0.0f, 0.0f});
+            } else {
+                drawRay(reflected, reflectColor);
+            }
+            
             return Lo + reflectColor;
- 
         }
 
-        
-        
         return Lo;
     } else {
         // Draw a red debug ray if the ray missed.
