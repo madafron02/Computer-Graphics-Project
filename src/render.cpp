@@ -40,7 +40,9 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        if (features.enableShading || features.extra.enableTransparency) {
+         if (features.extra.enableTransparency) {
+            drawRay(ray, Lo);
+        } else if (features.enableShading) {
             drawRay(ray, Lo);
             drawShadowRays(scene, ray, bvh, hitInfo, features);
         } else {

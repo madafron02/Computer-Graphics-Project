@@ -112,8 +112,17 @@ glm::vec3 computeLightContribution(const Scene& scene, const BvhInterface& bvh, 
     bvh.intersect(ray, hitInfo, features);
     glm::vec3 pointHit = ray.origin + (ray.t - 0.001f) * ray.direction;
 
+    if (features.extra.enableTransparency) {
+        for (const auto& light : scene.lights) {
+            if (std::holds_alternative<PointLight>(light)) {
+                const PointLight pointLight = std::get<PointLight>(light);
+                glm::vec3 color = computeShading(pointLight.position, pointLight.color, features, ray, hitInfo);
+            }
+        }
+    }
 
-    if (features.enableShading || features.extra.enableTransparency) {
+
+    if (features.enableShading) {
         // If shading is enabled, compute the contribution from all lights.
         for (const auto& light : scene.lights) {
             bvh.intersect(ray, hitInfo, features);
