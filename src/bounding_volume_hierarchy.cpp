@@ -4,10 +4,12 @@
 #include "intersect.h"
 #include "scene.h"
 #include "texture.h"
-#include <limits>
 #include <queue>
 #include <stack>
 #include <glm/glm.hpp>
+
+bool debugIntersected = false;
+int chosenRayDepth = -1;
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
@@ -188,7 +190,28 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
-bool BoundingVolumeHierarchy::checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const{
+void BoundingVolumeHierarchy::debugDrawNotVisited(std::vector<AxisAlignedBox> notVisited) const {
+    // Draw the AABB as an orange wireframe box.
+    for (auto n : notVisited) {
+        drawAABB(n, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
+    }
+}
+
+void BoundingVolumeHierarchy::debugDrawAllIntersected(std::vector<AxisAlignedBox> allIntersected, std::vector<AxisAlignedBox> notVisited) const {
+    // Draw the AABB as a blue wireframe box.
+    for (auto n : allIntersected) {
+        if(!checkContainsAABB(notVisited, n)) drawAABB(n, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 0.5f});
+    }
+}
+
+bool BoundingVolumeHierarchy::checkContainsAABB(std::vector<AxisAlignedBox> v, AxisAlignedBox b) const {
+    for(AxisAlignedBox a : v) {
+        if(a.upper == b.upper && a.lower == b.lower) return true;
+    }
+    return false;
+}
+
+bool BoundingVolumeHierarchy::checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const {
     glm::vec3 origin = ray.origin;
     if(origin.x >= aabb.lower.x && origin.y >= aabb.lower.y && origin.z >= aabb.lower.z
             && origin.x <= aabb.upper.x && origin.y <= aabb.upper.y && origin.z <= aabb.upper.z)
@@ -282,6 +305,8 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         bool hit = false;
         float last_primitive_t = -1.0f;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
+        std::vector<AxisAlignedBox> notVisited;
+        std::vector<AxisAlignedBox> allIntersected;
 
         // We start with the first AABB
         Node root = createdNodes.at(0);
@@ -291,7 +316,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         if(checkRayOriginInsideAABB(root.bounds, ray_copy)) check = true;
 
         if(check) {
-            if(enableDebugDraw) drawAABB(root.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+            allIntersected.emplace_back(root.bounds);
             if(ray_copy.t >= 0.0f) {
                 intersections.push(std::make_pair( ray_copy.t, root));
             } else {
@@ -307,7 +332,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 if(!intersectRayWithShape(current.bounds, ray_copy) && !checkRayOriginInsideAABB(root.bounds, ray_copy)) {
                     continue;
                 } else if(last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
-                    if(enableDebugDraw) drawAABB(current.bounds, DrawMode::Wireframe, glm::vec3{0.67f, 0.33f, 0.0f});
+                    notVisited.emplace_back(current.bounds);
                     continue;
                 }
 
@@ -324,7 +349,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         if(checkRayOriginInsideAABB(node1.bounds, ray_copy)) check1 = true;
 
                         if (check1) {
-                            if(enableDebugDraw) drawAABB(node1.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+                            allIntersected.emplace_back(node1.bounds);
                             if (ray_copy.t >= 0.0f) {
                                 intersections.push(std::make_pair(ray_copy.t, node1));
                             } else {
@@ -340,7 +365,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         if(checkRayOriginInsideAABB(node2.bounds, ray_copy)) check2 = true;
 
                         if(check2) {
-                            if(enableDebugDraw) drawAABB(node2.bounds, DrawMode::Wireframe, glm::vec3{0.0f, 0.5f, 1.0f});
+                            allIntersected.emplace_back(node2.bounds);
                             if(ray_copy.t >= 0.0f) {
                                 intersections.push(std::make_pair(ray_copy.t, node2));
                             } else {
@@ -382,6 +407,11 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
 
         if(enableDebugDraw && hit) {
             drawColoredTriangle(vf0, vf1, vf2, glm::vec3{0.0f, 1.0f, 0.0f});
+            if(debugIntersected) {
+                debugDrawNotVisited(notVisited);
+                debugDrawAllIntersected(allIntersected, notVisited);
+                debugIntersected = false;
+            }
 
             if (features.enableNormalInterp) {
                 glm::vec3 interpolatedNormal = interpolateNormal(vf0.normal, vf1.normal, vf2.normal, hitInfo.barycentricCoord);
