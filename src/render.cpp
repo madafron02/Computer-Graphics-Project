@@ -8,6 +8,7 @@
 #include <omp.h>
 #endif
 #include <iostream>
+#include <bounding_volume_hierarchy.h>
 
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features)
 {
@@ -36,6 +37,10 @@ void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Fea
 glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, const Features& features, int rayDepth)
 {
     HitInfo hitInfo;
+    if(chosenRayDepth == rayDepth)
+        debugNotVisited = true;
+    else debugNotVisited = false;
+
     if (bvh.intersect(ray, hitInfo, features)) {
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);

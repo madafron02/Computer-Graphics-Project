@@ -1,6 +1,7 @@
 #include "texture.h"
 #include <framework/image.h>
 #include <iostream>
+#include <cmath>
 
 int getIndex(Image image, const glm::vec2& texCoord)
 {
