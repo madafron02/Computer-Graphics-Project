@@ -20,7 +20,7 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
     if (glm::dot(ray.direction, hitInfo.normal) * glm::dot(cameraToPoint - cameraToLight, hitInfo.normal) <= 0) {
         return { 0, 0, 0 };
     }
-    if (hitInfo.material.ks == glm::vec3 { 1, 1, 1 }) {
+    if (hitInfo.material.ks != glm::vec3 { 0, 0, 0 }) {
         return { 0, 0, 0 };
     }
 
@@ -41,6 +41,6 @@ const Ray computeReflectionRay(Ray ray, HitInfo hitInfo)
     Ray reflectionRay = ray;
     // TODO: implement the reflection ray computation.
     reflectionRay.direction = normalize(normalize(ray.direction * ray.t) - 2 * glm::dot(normalize(ray.direction * ray.t), hitInfo.normal) * hitInfo.normal);
-    reflectionRay.origin = ray.origin + ray.t * ray.direction;
+    reflectionRay.origin = ray.origin + (ray.t - 0.0001f) * ray.direction;
     return reflectionRay;
 }
