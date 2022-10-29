@@ -41,7 +41,7 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
     glm::vec3 pointToLight = cameraToLight - cameraToPoint;
     glm::vec3 diffuse = lightColor * hitInfo.material.kd * glm::abs(glm::dot(hitInfo.normal, normalize(pointToLight)));
 
-    glm::vec3 viewVec = cameraToPoint - ray.origin;glm::vec3 lightVec = lightPosition - cameraToPoint;
+    glm::vec3 viewVec = cameraToPoint - ray.origin;
     glm::vec3 lightVec = lightPosition - cameraToPoint;
     glm::vec3 reflected = normalize(-normalize(lightVec) + 2 * (glm::dot(normalize(lightVec), hitInfo.normal)) * hitInfo.normal);
     /*
@@ -77,7 +77,7 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
         // 4. Replace reflected with a perturbed reflected vector
         reflected = reflected + u * u_vec + v * v_vec;
     }
- 
+  
     glm::vec3 specular = lightColor * hitInfo.material.ks * pow(glm::max(0.0f, glm::dot(normalize(viewVec), reflected)), hitInfo.material.shininess);
 
     return diffuse + specular;
