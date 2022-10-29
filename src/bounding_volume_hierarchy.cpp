@@ -4,6 +4,7 @@
 #include "intersect.h"
 #include "scene.h"
 #include "texture.h"
+#include <chrono>
 #include <limits>
 #include <iostream>
 #include <queue>
@@ -14,9 +15,12 @@ const std::vector<float> BoundingVolumeHierarchy::splitBins { 1.0/6, 0.25, 2.0/6
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
-    constexpr int MAX_LEVEL = 8;
-    constexpr int MIN_TRIANGLES_IN_LEAF = 4;
+    constexpr int MAX_LEVEL = 6;
+    constexpr int MIN_TRIANGLES_IN_LEAF = 6;
 
+    using clock = std::chrono::high_resolution_clock;
+    const auto start = clock::now();
+    
     Node root;
     // distribute world triangles
     for (int i = 0; i < m_pScene->meshes.size(); ++i) {
@@ -80,6 +84,9 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
         n_copy.indexes.clear();
         n_copy.indexes.push_back(std::make_tuple(left_idx, right_idx));
     }
+
+    const auto end = clock::now();
+    std::cout << "Time to generate BVH: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the
@@ -129,14 +136,14 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     //drawAABB(aabb, DrawMode::Wireframe);
     //drawAABB(aabb, DrawMode::Filled, glm::vec3(0.05f, 1.0f, 0.05f), 0.1f);
 
-    for (auto n : createdNodes) {
+    for (const auto& n : createdNodes) {
         if (n.isLeaf && n.leafNumber == leafIdx) {
             drawAABB(n.bounds, DrawMode::Wireframe);
 
             for (const std::tuple<int, int>& t : n.indexes) {
                 int mesh_idx = std::get<0>(t);
 
-                auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
+                const auto& triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
                 auto vertices = getTriangleVertices(mesh_idx, triangle);
                 drawTriangle(vertices.at(0), vertices.at(1), vertices.at(2));
             }
@@ -247,9 +254,9 @@ float BoundingVolumeHierarchy::findTrianglesAxisMedian(const IndexTuple& indexes
 
     std::vector<float> coords;
 
-    for (auto t : indexes) {
+    for (const auto& t : indexes) {
         int mesh_idx = std::get<0>(t);
-        auto triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
+        const auto& triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
 
         Vertex centroid = computeCentroid(std::get<0>(t), triangle);
         coords.push_back(centroid.position[axis]);
@@ -273,8 +280,8 @@ float BoundingVolumeHierarchy::findTrianglesAxisMedian(const IndexTuple& indexes
 
 void BoundingVolumeHierarchy::splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right)
 {
-    for (auto t : indexes) {
-        auto triangle = m_pScene->meshes.at(std::get<0>(t)).triangles.at(std::get<1>(t));
+    for (const auto& t : indexes) {
+        const auto& triangle = m_pScene->meshes.at(std::get<0>(t)).triangles.at(std::get<1>(t));
         Vertex coords = computeCentroid(std::get<0>(t), triangle);
 
         if (coords.position[axis] <= threshold)
