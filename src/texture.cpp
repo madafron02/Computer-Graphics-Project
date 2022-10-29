@@ -24,12 +24,12 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     // you can convert from position (i,j) to an index using the method seen in the lecture
     // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
     if (features.extra.enableBilinearTextureFiltering) {
-        auto u_p = texCoord.x;
-        auto v_p = (1 - texCoord.y);
-        auto iu0 = floor(u_p);
-        auto iv0 = floor(v_p);
-        auto iu1 = iu0 + 1;
-        auto iv1 = iv0 + 1;
+        float u_p = texCoord.x;
+        float v_p = (1 - texCoord.y);
+        float iu0 = floor(u_p);
+        float iv0 = floor(v_p);
+        float iu1 = iu0 + 1;
+        float iv1 = iv0 + 1;
         float a_u = iu1 - u_p;
         float a_v = iv1 - v_p;
         float b_u = 1 - a_u;
