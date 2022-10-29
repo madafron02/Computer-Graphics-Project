@@ -20,7 +20,7 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
     if (glm::dot(ray.direction, hitInfo.normal) * glm::dot(cameraToPoint - cameraToLight, hitInfo.normal) <= 0) {
         return { 0, 0, 0 };
     }
-    if (hitInfo.material.ks != glm::vec3 { 0, 0, 0 }) {
+    if (hitInfo.material.kd == glm::vec3 { 0, 0, 0 }) {
         return { 0, 0, 0 };
     }
 
