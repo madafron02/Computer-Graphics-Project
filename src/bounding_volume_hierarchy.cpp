@@ -8,7 +8,6 @@
 #include <queue>
 #include <stack>
 #include <glm/glm.hpp>
-#include <iostream>
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene)
     : m_pScene(pScene)
