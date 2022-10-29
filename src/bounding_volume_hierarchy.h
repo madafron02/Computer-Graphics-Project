@@ -6,7 +6,7 @@
 
 // Forward declaration.
 struct Scene;
-extern bool debugNotVisited;
+extern bool debugIntersected;
 extern int chosenRayDepth;
 
 class BoundingVolumeHierarchy {
@@ -27,6 +27,10 @@ public:
     void debugDrawLeaf(int leafIdx);
 
     void debugDrawNotVisited(std::vector<AxisAlignedBox> notVisited) const;
+
+    void debugDrawAllIntersected(std::vector<AxisAlignedBox> allIntersected, std::vector<AxisAlignedBox> notVisited) const;
+
+    bool checkContainsAABB(std::vector<AxisAlignedBox> v, AxisAlignedBox b) const;
 
     bool checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const;
 

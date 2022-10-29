@@ -38,8 +38,9 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 {
     HitInfo hitInfo;
     if(chosenRayDepth == rayDepth)
-        debugNotVisited = true;
-    else debugNotVisited = false;
+        debugIntersected = true;
+    else
+        debugIntersected = false;
 
     if (bvh.intersect(ray, hitInfo, features)) {
 

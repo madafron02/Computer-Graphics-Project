@@ -74,8 +74,7 @@ int main(int argc, char** argv)
         int bvhDebugLeaf = 0;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
-        //TODO checkbox
-        bool debugBVHNotVisited { false };
+        bool debugBVHIntersected { false };
         ViewMode viewMode { ViewMode::Rasterization };
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
@@ -88,7 +87,6 @@ int main(int argc, char** argv)
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
-                    //TODO chosen level
                     debugBVHRecursionLevel++;
                 } break;
                 case GLFW_KEY_S: {
@@ -208,8 +206,8 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
-                ImGui::Checkbox("Draw BVH nodes intersected but not visited", &debugBVHNotVisited);
-                if (debugBVHNotVisited)
+                ImGui::Checkbox("Draw BVH nodes intersected at separate recursion steps", &debugBVHIntersected);
+                if (debugBVHIntersected)
                     ImGui::SliderInt("Recursion Level", &debugBVHRecursionLevel, 0, 6);
             }
 
@@ -337,9 +335,10 @@ int main(int argc, char** argv)
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
-                    //TODO merge aici?
-                    if(debugBVHNotVisited)
+                    debugIntersected = false;
+                    if(debugBVHIntersected) {
                         chosenRayDepth = debugBVHRecursionLevel;
+                    }
                     (void)getFinalColor(scene, bvh, *optDebugRay, config.features);
                     enableDebugDraw = false;
                 }
