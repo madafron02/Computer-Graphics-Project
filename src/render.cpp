@@ -41,10 +41,13 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     HitInfo hitInfo;
     if (bvh.intersect(ray, hitInfo, features)) {
 
-        glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
+        
 
-        // Draw a coloured ray if shading is enabled, else white ray (if it hits).
-        if (features.enableShading) {
+        glm::vec3 Lo =computeLightContribution(scene, bvh, features, ray, hitInfo);
+
+        if (features.extra.enableTransparency) {
+            drawRay(ray, Lo);
+        } else if (features.enableShading) {
             drawRay(ray, Lo);
             drawShadowRays(scene, ray, bvh, hitInfo, features);
         } else {
@@ -56,10 +59,18 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
         }
 
-        if (features.enableRecursive && rayDepth < bvh.numLevels() && (hitInfo.material.ks != glm::vec3 {0,0,0})) {
-            Ray reflected = computeReflectionRay(ray, hitInfo);
-            reflected.origin += hitInfo.normal * std::numeric_limits<float>::epsilon();
+        if (features.extra.enableTransparency && rayDepth < 10) {
+            Ray helper = Ray {ray.origin + ray.direction * ray.t, ray.direction };
+            helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
 
+            return hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1);
+        }
+
+
+        if (features.enableRecursive && rayDepth < 6 && (hitInfo.material.ks != glm::vec3 {0,0,0})) {
+
+            Ray reflected = computeReflectionRay(ray, hitInfo);
+            reflected.origin += reflected.direction * std::numeric_limits<float>::epsilon();
             glm::vec3 reflectColor = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
             if(reflectColor == glm::vec3{0.0f}) {
                 drawRay(reflected, glm::vec3{1.0f, 0.0f, 0.0f});
