@@ -52,6 +52,18 @@ static std::ostream& operator<<(std::ostream& os, const SceneType& sceneType)
         os << "SceneType::Spheres";
         break;
     }
+    case SceneType::TextureMapping: {
+        os << "SceneType::TextureMapping";
+        break;
+    }
+    case SceneType::BilinearInterpolation: {
+        os << "SceneType::BilinearInterpolation";
+        break;
+    }
+    case SceneType::Transparency: {
+        os << "SceneType::Transparency";
+        break;
+    }
     case SceneType::Custom: {
         os << "SceneType::Custom";
         break;
@@ -394,6 +406,12 @@ std::string serialize(const SceneType& sceneType)
         return "dragon";
     case SceneType::Spheres:
         return "spheres";
+    case SceneType::TextureMapping:
+        return "texture_mapping";
+    case SceneType::BilinearInterpolation:
+        return "bilinear_interpolation";
+    case SceneType::Transparency:
+        return "transparency";
     case SceneType::Custom:
         return "custom";
     default:
@@ -423,6 +441,12 @@ std::optional<SceneType> deserialize(const std::string& sceneTypeStr)
         return SceneType::Dragon;
     } else if (lowered == "spheres") {
         return SceneType::Spheres;
+    } else if (lowered == "texture_mapping" || lowered == "texturemapping" || lowered == "texture-mapping") {
+        return SceneType::TextureMapping;
+    } else if (lowered == "bilinear_interpolation" || lowered == "bilinearinterpolation" || lowered == "bilinear-interpolation") {
+        return SceneType::BilinearInterpolation;
+    } else if (lowered == "transparency") {
+        return SceneType::Transparency;
     } else if (lowered == "custom") {
         return SceneType::Custom;
     } else {

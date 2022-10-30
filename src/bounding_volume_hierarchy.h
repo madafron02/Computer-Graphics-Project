@@ -6,6 +6,8 @@
 
 // Forward declaration.
 struct Scene;
+extern bool debugIntersected;
+extern int chosenRayDepth;
 
 class BoundingVolumeHierarchy {
 public:
@@ -24,6 +26,14 @@ public:
     // Visual Debug 2: Draw the triangles of the i-th leaf
     void debugDrawLeaf(int leafIdx);
 
+    void debugDrawNotVisited(std::vector<AxisAlignedBox> notVisited) const;
+
+    void debugDrawAllIntersected(std::vector<AxisAlignedBox> allIntersected, std::vector<AxisAlignedBox> notVisited) const;
+
+    bool checkContainsAABB(std::vector<AxisAlignedBox> v, AxisAlignedBox b) const;
+
+    bool checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const;
+
     // Return true if something is hit, returns false otherwise.
     // Only find hits if they are closer than t stored in the ray and the intersection
     // is on the correct side of the origin (the new t >= 0).
@@ -37,6 +47,7 @@ private:
             VEC_OF_MAXS, VEC_OF_MINS
         };
         IndexTuple indexes;
+
         int divisionAxis = 0; // x = 0, y = 1, z = 2
         int level = 0;
         bool isLeaf = false;

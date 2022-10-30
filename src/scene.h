@@ -22,6 +22,9 @@ enum SceneType {
     Teapot,
     Dragon,
     Spheres,
+    TextureMapping,
+    BilinearInterpolation,
+    Transparency,
     Custom,
 };
 

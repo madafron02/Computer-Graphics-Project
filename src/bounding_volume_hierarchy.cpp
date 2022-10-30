@@ -5,12 +5,15 @@
 #include "scene.h"
 #include "texture.h"
 #include <chrono>
-#include <limits>
-#include <iostream>
-#include <queue>
 #include <glm/glm.hpp>
+#include <iostream>
+#include <limits>
+#include <queue>
+#include <stack>
 
 const std::vector<float> BoundingVolumeHierarchy::splitBins { 0.25, 0.5, 0.75 };
+bool debugIntersected = false;
+int chosenRayDepth = -1;
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
@@ -20,7 +23,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
 
     //using clock = std::chrono::high_resolution_clock;
     //const auto start = clock::now();
-    
+
     Node root;
     // distribute world triangles
     for (int i = 0; i < m_pScene->meshes.size(); ++i) {
@@ -47,7 +50,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
             n.leafNumber = m_numLeaves;
             continue;
         }
-         
+
         Node left;
         Node right;
         left.level = n.level + 1;
@@ -62,7 +65,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
             std::vector<int> axises { 0, 1, 2 };
             getBestSplit(n, axises, calcAABBthresholds(n.bounds, axises, splitBins), left, right);
         }
-       
+
         // Store them in the list and update current node's index
         int left_idx = -1;
         int right_idx = -1;
@@ -77,7 +80,7 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
             toDivide.push(right_idx);
             createdNodes.emplace_back(right);
         }
-       
+
         // IMPORTANT: make sure n is still referencing the same node
         // to do that we create n_copy
         Node& n_copy = createdNodes.at(n_idx);
@@ -134,7 +137,7 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
         AxisAlignedBox copy = n.bounds;
         copy.lower[n.divisionAxis] = n.divisionThreshold;
         copy.upper[n.divisionAxis] = n.divisionThreshold;
-        
+
         drawAABB(copy, DrawMode::Filled, { 0.0f, 1.0f, 0.0f }, 0.2);
     }
 }
@@ -170,12 +173,57 @@ void BoundingVolumeHierarchy::debugDrawLeaf(int leafIdx)
     }
 }
 
+void BoundingVolumeHierarchy::debugDrawNotVisited(std::vector<AxisAlignedBox> notVisited) const
+{
+    // Draw the AABB as an orange wireframe box.
+    for (auto n : notVisited) {
+        drawAABB(n, DrawMode::Wireframe, glm::vec3 { 0.67f, 0.33f, 0.0f });
+    }
+}
+
+void BoundingVolumeHierarchy::debugDrawAllIntersected(std::vector<AxisAlignedBox> allIntersected, std::vector<AxisAlignedBox> notVisited) const
+{
+    // Draw the AABB as a blue wireframe box.
+    for (auto n : allIntersected) {
+        if (!checkContainsAABB(notVisited, n))
+            drawAABB(n, DrawMode::Wireframe, glm::vec3 { 0.0f, 0.5f, 0.5f });
+    }
+}
+
+bool BoundingVolumeHierarchy::checkContainsAABB(std::vector<AxisAlignedBox> v, AxisAlignedBox b) const
+{
+    for (AxisAlignedBox a : v) {
+        if (a.upper == b.upper && a.lower == b.lower)
+            return true;
+    }
+    return false;
+}
+
+bool BoundingVolumeHierarchy::checkRayOriginInsideAABB(AxisAlignedBox aabb, Ray ray) const
+{
+    glm::vec3 origin = ray.origin;
+    if (origin.x >= aabb.lower.x && origin.y >= aabb.lower.y && origin.z >= aabb.lower.z
+        && origin.x <= aabb.upper.x && origin.y <= aabb.upper.y && origin.z <= aabb.upper.z)
+        return true;
+    return false;
+}
+
 // Return true if something is hit, returns false otherwise. Only find hits if they are closer than t stored
 // in the ray and if the intersection is on the correct side of the origin (the new t >= 0). Replace the code
 // by a bounding volume hierarchy acceleration structure as described in the assignment. You can change any
 // file you like, including bounding_volume_hierarchy.h.
 bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Features& features) const
 {
+    typedef std::pair<float, Node> pair;
+    struct Comparator {
+        bool operator()(const pair& lhs, const pair& rhs) const
+        {
+            return lhs.first < rhs.first;
+        }
+    };
+
+    Vertex vf0, vf1, vf2;
+
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
@@ -186,9 +234,40 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                 const auto v1 = mesh.vertices[tri[1]];
                 const auto v2 = mesh.vertices[tri[2]];
                 if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray, hitInfo)) {
+
+                    hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray.origin + ray.t * ray.direction);
+
                     hitInfo.material = mesh.material;
                     hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
                     hit = true;
+
+                    if (features.enableTextureMapping) {
+                        hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                    }
+
+                    if (features.enableNormalInterp) {
+                        glm::vec3 interpolatNormal = interpolateNormal(v0.normal, v1.normal, v2.normal, hitInfo.barycentricCoord);
+                        Ray normal0 = { v0.position,
+                            normalize(v0.normal),
+                            1 };
+
+                        Ray normal1 = { v1.position,
+                            normalize(v1.normal),
+                            1 };
+
+                        Ray normal2 = { v2.position,
+                            normalize(v2.normal),
+                            1 };
+
+                        Ray interpolated = { ray.origin + ray.t * ray.direction,
+                            normalize(interpolatNormal),
+                            1 };
+
+                        drawRay(normal0, { 0, 1, 0 });
+                        drawRay(normal1, { 0, 1, 0 });
+                        drawRay(normal2, { 0, 1, 0 });
+                        drawRay(interpolated, { 1, 0, 0 });
+                    }
                 }
             }
         }
@@ -196,11 +275,163 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         for (const auto& sphere : m_pScene->spheres)
             hit |= intersectRayWithShape(sphere, ray, hitInfo);
         return hit;
+
     } else {
         // TODO: implement here the bounding volume hierarchy traversal.
         // Please note that you should use `features.enableNormalInterp` and `features.enableTextureMapping`
         // to isolate the code that is only needed for the normal interpolation and texture mapping features.
-        return false;
+
+        // DEBUG DETAILS:
+        // -> all intersected AABB's in blue
+        // -> all intersected but not visited AABB's in orange
+        // -> final triangle in green
+
+        bool hit = false;
+        float last_primitive_t = -1.0f;
+        std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
+        std::vector<AxisAlignedBox> notVisited;
+        std::vector<AxisAlignedBox> allIntersected;
+
+        // We start with the first AABB
+        Node root = createdNodes.at(0);
+
+        Ray ray_copy = ray;
+        bool check = intersectRayWithShape(root.bounds, ray_copy);
+        if (checkRayOriginInsideAABB(root.bounds, ray_copy))
+            check = true;
+
+        if (check) {
+            allIntersected.emplace_back(root.bounds);
+            if (ray_copy.t >= 0.0f) {
+                intersections.push(std::make_pair(ray_copy.t, root));
+            } else {
+                intersections.push(std::make_pair(0.0f, root));
+            }
+
+            while (!intersections.empty()) {
+                pair current_pair = intersections.top();
+                Node current = current_pair.second;
+                intersections.pop();
+
+                ray_copy = ray;
+                if (!intersectRayWithShape(current.bounds, ray_copy) && !checkRayOriginInsideAABB(root.bounds, ray_copy)) {
+                    continue;
+                } else if (last_primitive_t != -1.0f && ray_copy.t >= last_primitive_t) {
+                    notVisited.emplace_back(current.bounds);
+                    continue;
+                }
+
+                // We know the current AABB is intersected by the ray: we need to check its child nodes or its triangles
+                // (if it's a leaf):
+                if (!current.isLeaf) {
+                    int leaf1_idx = std::get<0>(current.indexes.at(0));
+                    int leaf2_idx = std::get<1>(current.indexes.at(0));
+
+                    if (leaf1_idx != -1) {
+                        Node node1 = createdNodes.at(leaf1_idx);
+                        ray_copy = ray;
+                        bool check1 = intersectRayWithShape(node1.bounds, ray_copy);
+                        if (checkRayOriginInsideAABB(node1.bounds, ray_copy))
+                            check1 = true;
+
+                        if (check1) {
+                            allIntersected.emplace_back(node1.bounds);
+                            if (ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node1));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node1));
+                            }
+                        }
+                    }
+
+                    if (leaf2_idx != -1) {
+                        Node node2 = createdNodes.at(leaf2_idx);
+                        ray_copy = ray;
+                        bool check2 = intersectRayWithShape(node2.bounds, ray_copy);
+                        if (checkRayOriginInsideAABB(node2.bounds, ray_copy))
+                            check2 = true;
+
+                        if (check2) {
+                            allIntersected.emplace_back(node2.bounds);
+                            if (ray_copy.t >= 0.0f) {
+                                intersections.push(std::make_pair(ray_copy.t, node2));
+                            } else {
+                                intersections.push(std::make_pair(0.0f, node2));
+                            }
+                        }
+                    }
+                } else {
+                    // This is a leaf: we check if any of the triangles is closer than any other
+                    ray_copy = ray;
+
+                    for (const auto& idx : current.indexes) {
+                        const auto& mesh = m_pScene->meshes.at(std::get<0>(idx));
+                        const auto& triangle = mesh.triangles.at(std::get<1>(idx));
+                        const auto v0 = mesh.vertices[triangle[0]];
+                        const auto v1 = mesh.vertices[triangle[1]];
+                        const auto v2 = mesh.vertices[triangle[2]];
+
+                        if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray_copy, hitInfo)) {
+                            last_primitive_t = ray_copy.t;
+                            hitInfo.material = mesh.material;
+                            hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                            hit = true;
+                            vf0 = v0;
+                            vf1 = v1;
+                            vf2 = v2;
+
+                            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+
+                            if (features.enableTextureMapping) {
+                                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (hit)
+                ray.t = last_primitive_t;
+        }
+
+        if (enableDebugDraw && hit) {
+            drawColoredTriangle(vf0, vf1, vf2, glm::vec3 { 0.0f, 1.0f, 0.0f });
+            if (debugIntersected) {
+                debugDrawNotVisited(notVisited);
+                debugDrawAllIntersected(allIntersected, notVisited);
+                debugIntersected = false;
+            }
+
+            if (features.enableNormalInterp) {
+                glm::vec3 interpolatedNormal = interpolateNormal(vf0.normal, vf1.normal, vf2.normal, hitInfo.barycentricCoord);
+                Ray normal0 = { vf0.position,
+                    normalize(vf0.normal),
+                    1 };
+
+                Ray normal1 = { vf1.position,
+                    normalize(vf1.normal),
+                    1 };
+
+                Ray normal2 = { vf2.position,
+                    normalize(vf2.normal),
+                    1 };
+
+                Ray interpolated = { ray.origin + ray.t * ray.direction,
+                    normalize(interpolatedNormal),
+                    1 };
+
+                drawRay(normal0, { 0, 1, 0 });
+                drawRay(normal1, { 0, 1, 0 });
+                drawRay(normal2, { 0, 1, 0 });
+                drawRay(interpolated, { 1, 0, 0 });
+            }
+        }
+
+        // Intersect with spheres which is not supported by the BVH
+        for (const auto& sphere : m_pScene->spheres)
+            hit |= intersectRayWithShape(sphere, ray, hitInfo);
+
+        return hit;
     }
 }
 
@@ -211,8 +442,8 @@ Vertex BoundingVolumeHierarchy::computeCentroid(int mesh, glm::uvec3 triangle)
     Vertex C = m_pScene->meshes.at(mesh).vertices.at(triangle.z);
 
     glm::vec3 position { (A.position.x + B.position.x + C.position.x) / 3.0f,
-                         (A.position.y + B.position.y + C.position.y) / 3.0f,
-                         (A.position.z + B.position.z + C.position.z) / 3.0f };
+        (A.position.y + B.position.y + C.position.y) / 3.0f,
+        (A.position.z + B.position.z + C.position.z) / 3.0f };
     return { position, glm::vec3 {}, glm::vec2 {} };
 }
 
@@ -235,7 +466,7 @@ AxisAlignedBox BoundingVolumeHierarchy::getAABBFromTriangles(const IndexTuple& i
     AxisAlignedBox answer;
     answer.lower = VEC_OF_MAXS;
     answer.upper = VEC_OF_MINS;
-    
+
     for (const auto& t : indexes) {
         int mesh_idx = std::get<0>(t);
         const auto& triangle = m_pScene->meshes.at(mesh_idx).triangles.at(std::get<1>(t));
@@ -320,7 +551,7 @@ void BoundingVolumeHierarchy::getBestSplit(Node& parent, const std::vector<int>&
 
             // thresholds.at(i * thresholds_per_axis + j) retrieves a threshold from
             // a two-dimensional array, where we store n thresholds for each axis
-            splitTrianglesByAxisAndThreshold(parent.indexes, axises.at(i), thresholds.at(i * thresholds_per_axis + j), 
+            splitTrianglesByAxisAndThreshold(parent.indexes, axises.at(i), thresholds.at(i * thresholds_per_axis + j),
                 indexesLeft, indexesRight);
 
             float cost_left = calcSplitCost(indexesLeft);

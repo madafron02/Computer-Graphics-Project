@@ -28,6 +28,7 @@ DISABLE_WARNINGS_POP()
 #include <string>
 #include <thread>
 #include <variant>
+#include <bounding_volume_hierarchy.h>
 
 // This is the main application. The code in here does not need to be modified.
 enum class ViewMode {
@@ -36,6 +37,8 @@ enum class ViewMode {
 };
 
 int debugBVHLeafId = 0;
+//TODO number on the slider
+int debugBVHRecursionLevel = 0;
 
 static void setOpenGLMatrices(const Trackball& camera);
 static void drawLightsOpenGL(const Scene& scene, const Trackball& camera, int selectedLight);
@@ -71,6 +74,7 @@ int main(int argc, char** argv)
         int bvhDebugLeaf = 0;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
+        bool debugBVHIntersected { false };
         ViewMode viewMode { ViewMode::Rasterization };
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
@@ -83,10 +87,11 @@ int main(int argc, char** argv)
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
+                    debugBVHRecursionLevel++;
                 } break;
                 case GLFW_KEY_S: {
                     debugBVHLeafId = std::max(0, debugBVHLeafId - 1);
-
+                    debugBVHRecursionLevel = std::max(0, debugBVHRecursionLevel - 1);
                 } break;
                 case GLFW_KEY_ESCAPE: {
                     window.close();
@@ -112,6 +117,9 @@ int main(int argc, char** argv)
                     "Teapot",
                     "Dragon",
                     /* "AABBs",*/ "Spheres", /*"Mixed",*/
+                    "Texture Mapping",
+                    "Bilinear Interpolation",
+                    "Transparency",
                     "Custom",
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
@@ -198,6 +206,9 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+                ImGui::Checkbox("Draw BVH nodes intersected at separate recursion steps", &debugBVHIntersected);
+                if (debugBVHIntersected)
+                    ImGui::SliderInt("Recursion Level", &debugBVHRecursionLevel, 0, 6);
             }
 
             ImGui::Spacing();
@@ -324,6 +335,10 @@ int main(int argc, char** argv)
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
+                    debugIntersected = false;
+                    if(debugBVHIntersected) {
+                        chosenRayDepth = debugBVHRecursionLevel;
+                    }
                     (void)getFinalColor(scene, bvh, *optDebugRay, config.features);
                     enableDebugDraw = false;
                 }
