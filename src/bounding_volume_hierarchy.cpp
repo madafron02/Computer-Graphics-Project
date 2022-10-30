@@ -18,8 +18,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
     constexpr int MAX_LEVEL = 6;
     constexpr int MIN_TRIANGLES_IN_LEAF = 6;
 
-    using clock = std::chrono::high_resolution_clock;
-    const auto start = clock::now();
+    //using clock = std::chrono::high_resolution_clock;
+    //const auto start = clock::now();
     
     Node root;
     // distribute world triangles
@@ -85,8 +85,8 @@ BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& 
         n_copy.indexes.push_back(std::make_tuple(left_idx, right_idx));
     }
 
-    const auto end = clock::now();
-    std::cout << "Time to generate BVH: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
+    //const auto end = clock::now();
+    //std::cout << "Time to generate BVH: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
 }
 
 // Return the depth of the tree that you constructed. This is used to tell the
@@ -118,6 +118,24 @@ void BoundingVolumeHierarchy::debugDrawLevel(int level)
             continue;
 
         drawAABB(n.bounds, DrawMode::Wireframe);
+
+        /*
+            Visual debug: draw a 'threshold' plane for nodes that are not leaves:
+        */
+        if (n.isLeaf)
+            continue;
+
+        if (n.divisionAxis < 0 || n.divisionAxis > 2) {
+            std::cout << "[!!!] Incorrect division axis in debugDrawLevel(): " << n.divisionAxis << '\n';
+            continue;
+        }
+
+        glm::vec3 planeColor = { 0.0, 1.0, 0.0 };
+        AxisAlignedBox copy = n.bounds;
+        copy.lower[n.divisionAxis] = n.divisionThreshold;
+        copy.upper[n.divisionAxis] = n.divisionThreshold;
+        
+        drawAABB(copy, DrawMode::Filled, { 0.0f, 1.0f, 0.0f }, 0.2);
     }
 }
 
