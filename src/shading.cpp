@@ -1,3 +1,4 @@
+#include "draw.h"
 #include "texture.h"
 #include <cmath>
 #include <cstdlib>
@@ -50,6 +51,8 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
     if (features.extra.enableGlossyReflection) {
         float a = 1 / ((hitInfo.material.shininess) * (hitInfo.material.shininess));
 
+        drawRay({ cameraToPoint, reflected, 0.1f }, { 0.0f, 0.0f, 1.0f });
+
         // 1. Find the orthonormal basis:
 
         glm::vec3 w_vec = glm::normalize(reflected);
@@ -76,6 +79,8 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
 
         // 4. Replace reflected with a perturbed reflected vector
         reflected = reflected + u * u_vec + v * v_vec;
+
+        drawRay({ cameraToPoint, reflected, 0.1f }, { 1.0f, 0.0f, 1.0f });
     }
   
     glm::vec3 specular = lightColor * hitInfo.material.ks * pow(glm::max(0.0f, glm::dot(normalize(viewVec), reflected)), hitInfo.material.shininess);
