@@ -10,7 +10,7 @@
 #include <queue>
 #include <glm/glm.hpp>
 
-const std::vector<float> BoundingVolumeHierarchy::splitBins { 1.0/6, 0.25, 2.0/6, 0.5, 4.0/6, 0.75, 5.0/6 };
+const std::vector<float> BoundingVolumeHierarchy::splitBins { 0.25, 0.5, 0.75 };
 
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
