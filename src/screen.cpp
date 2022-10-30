@@ -1,4 +1,5 @@
 #include "screen.h"
+#include "gaussian.h"
 // Suppress warnings in third-party code.
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
@@ -145,39 +146,34 @@ int Screen::indexAt(int x, int y) const
 
 void Screen::applyBloomFilter(float threshold, int filterSize)
 {
-    constexpr int SCALE = 1.5;
+    constexpr int SCALE = 1.2;
+    constexpr float SIGMA = 4;
 
     // m_textureData
     // 1. Threshold values
     std::vector<glm::vec3> pixels(m_textureData.size());
 
-    int counter = 0;
-    for (auto color : m_textureData) {
-        if (color.x >= threshold || color.y >= threshold || color.z >= threshold) {
-            ++counter;
-        }
-    }
-    std::cout << "THERE ARE " << counter << " THRESHOLDED PIXELS \n";
-    
     std::transform(std::begin(m_textureData), std::end(m_textureData), std::begin(pixels),
         [threshold](const glm::vec3& color) {
             return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : glm::vec3 { 0.0f, 0.0f, 0.0f };
+            //return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : color;
         });
 
-    // 2. Apply box filter AND
-    // 3. Scale AND
-    // 4. Add result to the pixels
+    // 2. Apply box filter 
 
     //std::vector<glm::vec3> pixels_boxFilter(m_textureData.size());
-#ifdef NDEBUG
-#pragma omp parallel for schedule(guided)
-#endif
-    for (int i = 0; i < m_resolution.x; ++i) {
-        for (int j = 0; j < m_resolution.y; ++j) {
-            for (int col = 0; col < 3; ++col) {
-                //pixels_boxFilter.at(indexAt(i, j))[col] = boxFilter(pixels, i, j, col, filterSize) * SCALE;
-                m_textureData.at(indexAt(i, j))[col] += boxFilter(pixels, i, j, col, filterSize) * SCALE;
-            }
-        }
+    using clock = std::chrono::high_resolution_clock;
+    const auto start = clock::now();
+
+    std::vector<glm::vec3> withGauss(m_textureData.size());
+    Gaussian::gaussBlur(*this, pixels, withGauss, SIGMA);
+    
+    const auto end = clock::now();
+    std::cout << "Time to RENDER the FILTER: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds\nAaaaaaghh that's so slow!!!!" << std::endl;
+
+    // 4.  Scale the bloom and add final bloom to the image :)
+    glm::vec3 scaler { SCALE, SCALE, SCALE };
+    for (int i = 0; i < m_textureData.size(); ++i) {
+        m_textureData.at(i) += withGauss.at(i) * scaler;
     }
 }
