@@ -291,10 +291,9 @@ void BoundingVolumeHierarchy::splitTrianglesByAxisAndThreshold(const IndexTuple&
     }
 }
 
-void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right)
+void BoundingVolumeHierarchy::getBestSplit(Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right)
 {
     float bestCost = FLOAT_MAX;
-    float parentVolume = calcAABBvolume(parent.bounds);
     int thresholds_per_axis = thresholds.size() / axises.size();
     for (int i = 0; i < axises.size(); ++i) {
         for (int j = 0; j < thresholds_per_axis; ++j) {
@@ -318,6 +317,9 @@ void BoundingVolumeHierarchy::getBestSplit(const Node& parent, const std::vector
                 // Save best setting
                 left.indexes = indexesLeft;
                 right.indexes = indexesRight;
+                // save chosen threshold & axis for visual debug
+                parent.divisionAxis = axises.at(i);
+                parent.divisionThreshold = thresholds.at(i * thresholds_per_axis + j);
             }
         }
     }

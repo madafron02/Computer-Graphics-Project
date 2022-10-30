@@ -41,6 +41,7 @@ private:
         int level = 0;
         bool isLeaf = false;
         int leafNumber = -1;
+        float divisionThreshold;
     };
 
     Vertex computeCentroid(int mesh, glm::uvec3 triangle);
@@ -48,7 +49,7 @@ private:
     AxisAlignedBox getAABBFromTriangles(const IndexTuple& indexes);
     float findTrianglesAxisMedian(const IndexTuple& indexes, int axis);
     void splitTrianglesByAxisAndThreshold(const IndexTuple& indexes, int axis, float threshold, IndexTuple& left, IndexTuple& right);
-    void getBestSplit(const Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right);
+    void getBestSplit(Node& parent, const std::vector<int>& axises, std::vector<float> thresholds, Node& left, Node& right);
     float calcSplitCost(const IndexTuple& indexes);
     float calcAABBvolume(const AxisAlignedBox& aabb);
     std::vector<float> calcAABBthresholds(const AxisAlignedBox& aabb, const std::vector<int>& axises, const std::vector<float>& thresholds);
