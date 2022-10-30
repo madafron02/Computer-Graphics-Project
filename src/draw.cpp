@@ -175,6 +175,22 @@ void drawScene(const Scene& scene)
         drawSphere(sphere);
 }
 
+void drawPlane(const glm::vec3& x0, const glm::vec3& x1, const glm::vec3& x2, const glm::vec3& x3, const glm::vec3& color)
+{
+    if (!enableDebugDraw)
+        return;
+
+    glBegin(GL_TRIANGLES);
+    glColor3fv(glm::value_ptr(color));
+    glVertex3fv(glm::value_ptr(x0));
+    glVertex3fv(glm::value_ptr(x1));
+    glVertex3fv(glm::value_ptr(x2));
+    glVertex3fv(glm::value_ptr(x0));
+    glVertex3fv(glm::value_ptr(x2));
+    glVertex3fv(glm::value_ptr(x3));
+    glEnd();
+}
+
 void drawRay(const Ray& ray, const glm::vec3& color)
 {
     if (!enableDebugDraw)
