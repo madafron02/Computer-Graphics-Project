@@ -3,13 +3,6 @@
 
 glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
 {
-    glm::vec3 edge0 = v1 - v0;
-    glm::vec3 edge1 = v2 - v1;
-    glm::vec3 edge2 = v0 - v2;
-
-    glm::vec3 p0 = p - v0;
-    glm::vec3 p1 = p - v1;
-    glm::vec3 p2 = p - v2;
 
     float totalArea = glm::length(abs(glm::cross(v1 - v0, v2 - v1))) / 2;
 
