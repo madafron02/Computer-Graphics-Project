@@ -86,6 +86,15 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     }
 }
 
+glm::vec3 getPixelColorDOF(Ray cameraRay, float aperture, float focalLength) {
+    /*
+     * TODO get focal point: P = camRay.o + camRay.dir * focalLength
+     * TODO move origin randomly according to aperture: camRay.o + rand displacement
+     * TODO generate 20 rays towards the focal point with direction D = P - (camRay.o + rand displacement)
+     * TODO average getFinalColor called on each of them
+     */
+}
+
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();
@@ -93,6 +102,7 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
 #ifdef NDEBUG
 #pragma omp parallel for schedule(guided)
 #endif
+
     for (int y = 0; y < windowResolution.y; y++) {
         for (int x = 0; x != windowResolution.x; x++) {
             // NOTE: (-1, -1) at the bottom left of the screen, (+1, +1) at the top right of the screen.
@@ -101,7 +111,15 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
                 float(y) / float(windowResolution.y) * 2.0f - 1.0f
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
-            screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+
+            if(features.extra.enableDepthOfField) {
+                /*
+                 * TODO call method for sampled rays (first try 20 then 50 then 100)
+                 * TODO screen.setPixel(x, y, averagedColor);
+                 */
+            } else {
+                screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
+            }
         }
     }
 }
