@@ -115,6 +115,7 @@ int main(int argc, char** argv)
                     "Texture Mapping",
                     "Bilinear Interpolation",
                     "Transparency",
+                    "Glossy Reflections",
                     "Custom",
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
