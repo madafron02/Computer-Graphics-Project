@@ -194,11 +194,6 @@ int main(int argc, char** argv)
                     // Perform a new render and measure the time it took to generate the image.
                     using clock = std::chrono::high_resolution_clock;
                     const auto start = clock::now();
-                    // TODO here
-                    if(config.features.extra.enableDepthOfField) {
-                        //aperture = levelAperture;
-                        //focalLength = levelFocalLength;
-                    }
                     renderRayTracing(scene, camera, bvh, screen, config.features);
                     const auto end = clock::now();
                     std::cout << "Time to render image: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
@@ -350,6 +345,7 @@ int main(int argc, char** argv)
                     if(debugBVHIntersected) {
                         chosenRayDepth = debugBVHRecursionLevel;
                     }
+                    if(config.features.extra.enableDepthOfField) drawSampleRay = true;
                     (void)getFinalColor(scene, bvh, *optDebugRay, config.features);
                     enableDebugDraw = false;
                 }
@@ -378,14 +374,6 @@ int main(int argc, char** argv)
             } break;
             case ViewMode::RayTracing: {
                 screen.clear(glm::vec3(0.0f));
-
-                // TODO here
-                // Set global variables for DOF
-                if(config.features.extra.enableDepthOfField) {
-                    //aperture = levelAperture;
-                    //focalLength = levelFocalLength;
-                }
-
                 renderRayTracing(scene, camera, bvh, screen, config.features);
                 screen.setPixel(0, 0, glm::vec3(1.0f));
                 screen.draw(); // Takes the image generated using ray tracing and outputs it to the screen using OpenGL.

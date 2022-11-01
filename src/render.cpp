@@ -8,10 +8,10 @@
 #endif
 #include <bounding_volume_hierarchy.h>
 #include <random>
-#include <iostream>
 
 float aperture = 0;
 float focalLength = 0.15f;
+bool drawSampleRay = false;
 
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features)
 {
@@ -46,13 +46,11 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         debugIntersected = false;
 
     if (bvh.intersect(ray, hitInfo, features)) {
-        glm::vec3 Lo;
+        glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        if(features.extra.enableDepthOfField) {
-            // here goes the visual debug for DOF
+        if(features.extra.enableDepthOfField && drawSampleRay) {
+            getPixelColorDOF(ray, scene, bvh, features);
         }
-
-        Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
          if (features.extra.enableTransparency) {
             drawRay(ray, Lo);
@@ -100,10 +98,11 @@ glm::vec3 getPixelColorDOF(Ray cameraRay, const Scene &scene, const BvhInterface
      * move origin randomly according to aperture: camRay.o + rand displacement
      * generate 20 rays towards the focal point with direction D = P - (camRay.o + rand displacement)
      * average getFinalColor called on each of them
+     *
+     * visual debug: use drawSampleRay as a flag which
      */
-
+    HitInfo hitInfo;
     glm::vec3 finalColor{0.0f};
-
     glm::vec3 focalPoint = cameraRay.origin + cameraRay.direction * focalLength;
 
     std::random_device rd;
@@ -121,7 +120,12 @@ glm::vec3 getPixelColorDOF(Ray cameraRay, const Scene &scene, const BvhInterface
         glm::vec3 sampleVector = focalPoint - originWithOffset;
         Ray sampleSecondaryRay = {originWithOffset, normalize(sampleVector)};
 
+        drawSampleRay = false;
         glm::vec3 sampleColor = getFinalColor(scene, bvh, sampleSecondaryRay, features);
+        drawSampleRay = true;
+        bvh.intersect(sampleSecondaryRay, hitInfo, features);
+        if(enableDebugDraw) drawRay(sampleSecondaryRay, sampleColor);
+
         finalColor += sampleColor;
     }
 
