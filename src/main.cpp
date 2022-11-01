@@ -72,8 +72,6 @@ int main(int argc, char** argv)
 
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
-        float levelAperture = 0;
-        float levelFocalLength = 0.5f;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
         bool debugBVHIntersected { false };
@@ -345,7 +343,6 @@ int main(int argc, char** argv)
                     if(debugBVHIntersected) {
                         chosenRayDepth = debugBVHRecursionLevel;
                     }
-                    if(config.features.extra.enableDepthOfField) drawSampleRay = true;
                     (void)getFinalColor(scene, bvh, *optDebugRay, config.features);
                     enableDebugDraw = false;
                 }

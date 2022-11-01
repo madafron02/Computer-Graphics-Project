@@ -16,7 +16,6 @@ struct Features;
 // Variables for depth of field option
 extern float aperture;
 extern float focalLength;
-extern bool drawSampleRay;
 
 // Main rendering function.
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features);

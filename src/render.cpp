@@ -11,7 +11,6 @@
 
 float aperture = 0;
 float focalLength = 0.15f;
-bool drawSampleRay = false;
 
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features)
 {
@@ -48,7 +47,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     if (bvh.intersect(ray, hitInfo, features)) {
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-        if(features.extra.enableDepthOfField && drawSampleRay) {
+        if(features.extra.enableDepthOfField && rayDepth < 1) {
+            // for DOF visual debug, only call this method to draw the secondary rays
             getPixelColorDOF(ray, scene, bvh, features);
         }
 
@@ -119,12 +119,12 @@ glm::vec3 getPixelColorDOF(Ray cameraRay, const Scene &scene, const BvhInterface
 
         glm::vec3 sampleVector = focalPoint - originWithOffset;
         Ray sampleSecondaryRay = {originWithOffset, normalize(sampleVector)};
+        glm::vec3 sampleColor = getFinalColor(scene, bvh, sampleSecondaryRay, features, 1);
 
-        drawSampleRay = false;
-        glm::vec3 sampleColor = getFinalColor(scene, bvh, sampleSecondaryRay, features);
-        drawSampleRay = true;
-        bvh.intersect(sampleSecondaryRay, hitInfo, features);
-        if(enableDebugDraw) drawRay(sampleSecondaryRay, sampleColor);
+        if(enableDebugDraw) {
+            bvh.intersect(sampleSecondaryRay, hitInfo, features);
+            drawRay(sampleSecondaryRay, sampleColor);
+        }
 
         finalColor += sampleColor;
     }
