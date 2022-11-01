@@ -12,3 +12,4 @@ struct Image;
 
 // Given an image and a texture coordinate, return the corresponding texel.
 glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Features& features);
+glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection);

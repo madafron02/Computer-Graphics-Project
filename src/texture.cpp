@@ -56,3 +56,101 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
         return image.pixels[index];
     }
 }
+
+glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
+{
+    float x_abs = abs(rayDirection.x);
+    float y_abs = abs(rayDirection.y);
+    float z_abs = abs(rayDirection.z);
+
+    float maxDir = std::max(x_abs, std::max(y_abs, z_abs));
+
+    if (maxDir < 0.00001f) {
+        return glm::vec3(0.0f);
+    }
+
+    float x = rayDirection.x / maxDir;
+    float y = rayDirection.y / maxDir;
+    float z = rayDirection.z / maxDir;
+
+    int helper = -1;
+
+    float hor = 0.0f;
+    float ver = 0.0f;
+
+    if (x_abs >= y_abs && x_abs >= z_abs) {
+        if (x > 0.0f) {
+            helper = 0;
+            hor = -z;
+            ver = -y;
+        } else {
+            helper = 1;
+            hor = z;
+            ver = -y;
+        }
+    } else if (y_abs >= x_abs && y_abs >= z_abs) {
+        if (y > 0.0f) {
+            helper = 2;
+            hor = x;
+            ver = z;
+        } else {
+            helper = 3;
+            hor = x;
+            ver = -z;
+        }
+    } else if (z_abs >= x_abs && z_abs >= y_abs) {
+        if (z > 0.0f) {
+            helper = 4;
+            hor = x;
+            ver = -y;
+        } else {
+            helper = 5;
+            hor = -x;
+            ver = -y;
+        }
+    }
+
+    hor = (hor + 1.0f) / 2.0f;
+    ver = (ver + 1.0f) / 2.0f;
+
+    float width = image.width / 4.0f;
+    float height = image.height / 3.0f;
+
+    float i;
+    float j;
+
+    switch (helper) {
+    case 0: {
+        i = (2 + hor) * width;
+        j = (1 + ver) * height;
+    } break;
+    case 1: {
+        i = (2 + hor) * width;
+        j = (1 + ver) * height;
+    } break;
+    case 2: {
+        i = hor * width;
+        j = (1 + ver) * height;
+    } break;
+    case 3: {
+        i = (1 + hor) * width;
+        j = (2 + ver) * height;
+    } break;
+    case 4: {
+        i = (1 + hor) * width;
+        j = (1 + ver) * height;
+    } break;
+    case 5: {
+        i = (3 + hor) * width;
+        j = (1 + ver) * height;
+    } break;
+    default:
+        i = 0.0f;
+        j = 0.0f;
+    }
+
+    int k = floor(i);
+    int l = floor(j);
+
+    return image.pixels[image.width * l + k];
+}
