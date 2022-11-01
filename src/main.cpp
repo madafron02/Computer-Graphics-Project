@@ -72,6 +72,8 @@ int main(int argc, char** argv)
 
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
+        float levelAperture = 0;
+        float levelFocalLength = 0.5f;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
         bool debugBVHIntersected { false };
@@ -159,6 +161,10 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
+                if (config.features.extra.enableDepthOfField) {
+                    ImGui::SliderFloat("Aperture", &aperture, 0, 0.15f, "%f", 0);
+                    ImGui::SliderFloat("Focal length", &focalLength, 0.5f, 5.0f, "%f", 0);
+                }
             }
             ImGui::Separator();
 
@@ -188,6 +194,11 @@ int main(int argc, char** argv)
                     // Perform a new render and measure the time it took to generate the image.
                     using clock = std::chrono::high_resolution_clock;
                     const auto start = clock::now();
+                    // TODO here
+                    if(config.features.extra.enableDepthOfField) {
+                        //aperture = levelAperture;
+                        //focalLength = levelFocalLength;
+                    }
                     renderRayTracing(scene, camera, bvh, screen, config.features);
                     const auto end = clock::now();
                     std::cout << "Time to render image: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
@@ -367,6 +378,14 @@ int main(int argc, char** argv)
             } break;
             case ViewMode::RayTracing: {
                 screen.clear(glm::vec3(0.0f));
+
+                // TODO here
+                // Set global variables for DOF
+                if(config.features.extra.enableDepthOfField) {
+                    //aperture = levelAperture;
+                    //focalLength = levelFocalLength;
+                }
+
                 renderRayTracing(scene, camera, bvh, screen, config.features);
                 screen.setPixel(0, 0, glm::vec3(1.0f));
                 screen.draw(); // Takes the image generated using ray tracing and outputs it to the screen using OpenGL.

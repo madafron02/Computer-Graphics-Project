@@ -1,5 +1,4 @@
 #include "render.h"
-#include "intersect.h"
 #include "light.h"
 #include "screen.h"
 #include "texture.h"
@@ -7,8 +6,12 @@
 #ifdef NDEBUG
 #include <omp.h>
 #endif
-#include <iostream>
 #include <bounding_volume_hierarchy.h>
+#include <random>
+#include <iostream>
+
+float aperture = 0;
+float focalLength = 0.15f;
 
 void drawShadowRays(Scene scene, Ray ray, BvhInterface bvh, HitInfo hitInfo, Features features)
 {
@@ -43,8 +46,13 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         debugIntersected = false;
 
     if (bvh.intersect(ray, hitInfo, features)) {
+        glm::vec3 Lo;
 
-        glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
+        if(features.extra.enableDepthOfField) {
+            // here goes the visual debug for DOF
+        }
+
+        Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
          if (features.extra.enableTransparency) {
             drawRay(ray, Lo);
@@ -86,13 +94,38 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
     }
 }
 
-glm::vec3 getPixelColorDOF(Ray cameraRay, float aperture, float focalLength) {
+glm::vec3 getPixelColorDOF(Ray cameraRay, const Scene &scene, const BvhInterface &bvh, const Features &features) {
     /*
-     * TODO get focal point: P = camRay.o + camRay.dir * focalLength
-     * TODO move origin randomly according to aperture: camRay.o + rand displacement
-     * TODO generate 20 rays towards the focal point with direction D = P - (camRay.o + rand displacement)
-     * TODO average getFinalColor called on each of them
+     * get focal point: P = camRay.o + camRay.dir * focalLength
+     * move origin randomly according to aperture: camRay.o + rand displacement
+     * generate 20 rays towards the focal point with direction D = P - (camRay.o + rand displacement)
+     * average getFinalColor called on each of them
      */
+
+    glm::vec3 finalColor{0.0f};
+
+    glm::vec3 focalPoint = cameraRay.origin + cameraRay.direction * focalLength;
+
+    std::random_device rd;
+    std::default_random_engine generator(rd());
+    std::uniform_real_distribution<float> distribution(-0.5f, 0.5f);
+
+    for(int i = 0; i < 20; i++) {
+        float randomXCoord = distribution(generator) * aperture;
+        float randomYCoord = distribution(generator) * aperture;
+        float randomZCoord = distribution(generator) * aperture;
+
+        glm::vec3 randomOffset = {randomXCoord, randomYCoord, randomZCoord};
+        glm::vec3 originWithOffset = cameraRay.origin + randomOffset;
+
+        glm::vec3 sampleVector = focalPoint - originWithOffset;
+        Ray sampleSecondaryRay = {originWithOffset, normalize(sampleVector)};
+
+        glm::vec3 sampleColor = getFinalColor(scene, bvh, sampleSecondaryRay, features);
+        finalColor += sampleColor;
+    }
+
+    return finalColor /= 20.0f;
 }
 
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
@@ -114,9 +147,11 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
 
             if(features.extra.enableDepthOfField) {
                 /*
-                 * TODO call method for sampled rays (first try 20 then 50 then 100)
-                 * TODO screen.setPixel(x, y, averagedColor);
+                 * call method for sampled rays (first try 20 then 50 then 100)
+                 * set pixel color with result
                  */
+                glm::vec3 averagedColor = getPixelColorDOF(cameraRay, scene, bvh, features);
+                screen.setPixel(x, y, averagedColor);
             } else {
                 screen.setPixel(x, y, getFinalColor(scene, bvh, cameraRay, features));
             }
