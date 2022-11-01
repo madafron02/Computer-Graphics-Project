@@ -46,9 +46,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         glm::vec3 Lo = computeLightContribution(scene, bvh, features, ray, hitInfo);
 
-         if (features.extra.enableTransparency) {
-            drawRay(ray, Lo);
-        } else if (features.enableShading) {
+         if (features.enableShading) {
             drawRay(ray, Lo);
             drawShadowRays(scene, ray, bvh, hitInfo, features);
         } else {
@@ -57,12 +55,21 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
         if (features.enableTextureMapping && hitInfo.material.kdTexture && !features.enableShading) {
+            if (features.extra.enableTransparency && rayDepth < 10) {
+                Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
+                helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
+                drawRay(ray, hitInfo.material.transparency* acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features) + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1));
+
+
+                return hitInfo.material.transparency * acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features) + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1);
+            }
             return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
         }
 
         if (features.extra.enableTransparency && rayDepth < 10) {
             Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
             helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
+            drawRay(ray, hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1));
 
             return hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1);
         }

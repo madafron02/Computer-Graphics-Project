@@ -25,6 +25,7 @@ enum SceneType {
     TextureMapping,
     BilinearInterpolation,
     Transparency,
+    TransparencyTexture,
     Custom,
 };
 
