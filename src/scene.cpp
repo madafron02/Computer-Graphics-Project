@@ -6,6 +6,7 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
 {
     Scene scene;
     scene.type = type;
+    scene.envMap = std::make_shared<Image>(dataDir / "cube_map.png");
     switch (type) {
     case SingleTriangle: {
         // Load a 3D model with a single triangle
