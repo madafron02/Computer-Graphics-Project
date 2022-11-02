@@ -161,11 +161,31 @@ void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInte
             };
             const Ray cameraRay = camera.generateRay(normalizedPixelPos);
 
-            if(features.extra.enableDepthOfField) {
-                /*
-                 * call method for sampled rays (first try 20 then 50 then 100)
-                 * set pixel color with result
-                 */
+            if(features.extra.enableMultipleRaysPerPixel) {
+                glm::vec3 color{0.0f};
+                // test with 4x4 grid in each pixel
+                for(int i = 0; i < 15; i++) {
+                    for(int j = 0; j < 15; j++) {
+                        float r = ((double) rand() / RAND_MAX);
+                        //std::cout<< r << "\n";
+                        float sampleX = x + (float)(i + r) / 15.0f;
+                        float sampleY = y + (float)(j + r) / 15.0f;
+
+                        const glm::vec2 normalizedPixelPosSample {
+                            float(sampleX) / float(windowResolution.x) * 2.0f - 1.0f,
+                            float(sampleY) / float(windowResolution.y) * 2.0f - 1.0f
+                        };
+
+                        Ray sampleRay = camera.generateRay(normalizedPixelPosSample);
+                        if(features.extra.enableDepthOfField) {
+                            color = color + getPixelColorDOF(sampleRay, scene, bvh, features);
+                        } else {
+                            color = color + getFinalColor(scene, bvh, sampleRay, features);
+                        }
+                    }
+                }
+                screen.setPixel(x, y, color / 225.0f);
+            } else if(features.extra.enableDepthOfField) {
                 glm::vec3 averagedColor = getPixelColorDOF(cameraRay, scene, bvh, features);
                 screen.setPixel(x, y, averagedColor);
             } else {
