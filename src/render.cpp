@@ -53,6 +53,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
          if (features.extra.enableTransparency) {
+             //Visual debug
             drawRay(ray, Lo);
         } else if (features.enableShading) {
             drawRay(ray, Lo);
@@ -63,6 +64,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
         if (features.enableTextureMapping && hitInfo.material.kdTexture && !features.enableShading) {
+            //Texturing and texturing with transparency
             if (features.extra.enableTransparency && rayDepth < 10) {
                 Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
                 helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
@@ -75,6 +77,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
         if (features.extra.enableTransparency && rayDepth < 10) {
+            //Transparency
             Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
             helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
             drawRay(ray, hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1));
@@ -83,7 +86,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
         if (features.enableRecursive && rayDepth < 6 && (hitInfo.material.ks != glm::vec3 { 0, 0, 0 })) {
-
+            //Ray Tracer - recursive approach
             Ray reflected = computeReflectionRay(ray, hitInfo);
             reflected.origin += reflected.direction * std::numeric_limits<float>::epsilon();
             glm::vec3 reflectColor = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
@@ -95,7 +98,8 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         return Lo;
     } else {
         if (features.extra.enableEnvironmentMapping) {
-            return getEnvironmentTexel(*scene.envMap, ray.direction);
+            //If ray doesn't intersect any mesh then take the pixel from environemnt map -> craetion of surrounding
+            return getEnvironmentTexel(*scene.environmentMap, ray.direction);
         }
         // Draw a red debug ray if the ray missed.
         drawRay(ray, glm::vec3(1.0f, 0.0f, 0.0f));

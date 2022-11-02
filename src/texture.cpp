@@ -1,25 +1,29 @@
 #include "texture.h"
+#include <cmath>
 #include <framework/image.h>
 #include <iostream>
-#include <cmath>
 
-int getIndex(Image image, const glm::vec2& texCoord)
+// Method for getting textures if only texture mapping is enabled
+int getIndex(Image image, const glm::vec2& coord)
 {
-    auto x = (int)(texCoord.x * image.width);
-    auto y = (int)((1 - texCoord.y) * image.height);
+    int x = (int)(coord.x * image.width - 0.5);
+    int y = (int)((1 - coord.y) * image.height - 0.5);
 
     auto index = y * image.width + x;
     return index;
 }
 
-int billinearIndex(Image image, int x, int y)
+// Method for getting index for bilinear interpolation
+int bilinearIndex(Image image, int x, int y)
 {
-    return y * image.width + x;
+    int bilinearX = fmax(fmin(image.width - 1, x), 0);
+    int bilinearY = fmax(fmin(image.height - 1, y), 0);
+    return bilinearY * image.width + bilinearX;
 }
-
 
 glm::vec3 bilinearInterpolation(Image image, const glm::vec2 texCoord)
 {
+    // Compute indexes
     float u_p = texCoord.x;
     float v_p = (1 - texCoord.y);
     float iu0 = floor(u_p);
@@ -31,24 +35,22 @@ glm::vec3 bilinearInterpolation(Image image, const glm::vec2 texCoord)
     float b_u = 1 - a_u;
     float b_v = 1 - a_v;
 
-    glm::vec3 t_iu0_iv0 = image.pixels[billinearIndex(image, iu0, iv0)];
-    glm::vec3 t_iu0_iv1 = image.pixels[billinearIndex(image, iu0, iv1)];
-    glm::vec3 t_iu1_iv0 = image.pixels[billinearIndex(image, iu1, iv0)];
-    glm::vec3 t_iu1_iv1 = image.pixels[billinearIndex(image, iu1, iv1)];
+    // Get colors at indexes
+    glm::vec3 t_iu0_iv0 = image.pixels[bilinearIndex(image, iu0, iv0)];
+    glm::vec3 t_iu0_iv1 = image.pixels[bilinearIndex(image, iu0, iv1)];
+    glm::vec3 t_iu1_iv0 = image.pixels[bilinearIndex(image, iu1, iv0)];
+    glm::vec3 t_iu1_iv1 = image.pixels[bilinearIndex(image, iu1, iv1)];
+
+    // Compute interpolated color
     return a_u * a_v * t_iu0_iv0
         + a_u * b_v * t_iu0_iv1
         + b_u * a_v * t_iu1_iv0
         + b_u * b_v * t_iu1_iv1;
 }
 
-
+// Get texture pixel
 glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Features& features)
 {
-    // TODO: implement this function.
-    // Given texcoords, return the corresponding pixel of the image
-    // The pixel are stored in a 1D array of row major order
-    // you can convert from position (i,j) to an index using the method seen in the lecture
-    // Note, the center of the first pixel is at image coordinates (0.5, 0.5)
     if (features.extra.enableBilinearTextureFiltering) {
         return bilinearInterpolation(image, texCoord);
     } else {
@@ -57,6 +59,7 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
     }
 }
 
+// Get color from the cube_map (for the surrounding)
 glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
 {
     float x_abs = abs(rayDirection.x);
@@ -78,6 +81,7 @@ glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
     float hor = 0.0f;
     float ver = 0.0f;
 
+    //Check on which face is the point
     if (x_abs >= y_abs && x_abs >= z_abs) {
         if (x > 0.0f) {
             helper = 0;
@@ -113,36 +117,39 @@ glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
     hor = (hor + 1.0f) / 2.0f;
     ver = (ver + 1.0f) / 2.0f;
 
-    float width = image.width / 4.0f;
-    float height = image.height / 3.0f;
+
+    //Width/Height of the face
+    float measure = image.width / 4.0f;
 
     float i;
     float j;
 
+
+    //Calculate texel based on the #face we are on
     switch (helper) {
     case 0: {
-        i = (2 + hor) * width;
-        j = (1 + ver) * height;
+        i = (2 + hor) * measure;
+        j = (1 + ver) * measure;
     } break;
     case 1: {
-        i = (2 + hor) * width;
-        j = (1 + ver) * height;
+        i = (2 + hor) * measure;
+        j = (1 + ver) * measure;
     } break;
     case 2: {
-        i = hor * width;
-        j = (1 + ver) * height;
+        i = hor * measure;
+        j = (1 + ver) * measure;
     } break;
     case 3: {
-        i = (1 + hor) * width;
-        j = (2 + ver) * height;
+        i = (1 + hor) * measure;
+        j = (2 + ver) * measure;
     } break;
     case 4: {
-        i = (1 + hor) * width;
-        j = (1 + ver) * height;
+        i = (1 + hor) * measure;
+        j = (1 + ver) * measure;
     } break;
     case 5: {
-        i = (3 + hor) * width;
-        j = (1 + ver) * height;
+        i = (3 + hor) * measure;
+        j = (1 + ver) * measure;
     } break;
     default:
         i = 0.0f;
