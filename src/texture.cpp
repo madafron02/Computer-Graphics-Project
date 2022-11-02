@@ -3,10 +3,10 @@
 #include <iostream>
 #include <cmath>
 
-int getIndex(Image image, const glm::vec2& texCoord)
+int getIndex(Image image, const glm::vec2& coord)
 {
-    auto x = (int)(texCoord.x * image.width);
-    auto y = (int)((1 - texCoord.y) * image.height);
+    int x = (int)(coord.x * image.width - 0.5);
+    int y = (int)((1 - coord.y) * image.height - 0.5);
 
     auto index = y * image.width + x;
     return index;
@@ -14,7 +14,9 @@ int getIndex(Image image, const glm::vec2& texCoord)
 
 int billinearIndex(Image image, int x, int y)
 {
-    return y * image.width + x;
+    int bilinearX = fmax(fmin(image.width - 1, x), 0);
+    int bilinearY = fmax(fmin(image.height - 1, y), 0);
+    return bilinearY * image.width + bilinearX;
 }
 
 
