@@ -6,6 +6,7 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
 {
     Scene scene;
     scene.type = type;
+    scene.envMap = std::make_shared<Image>(dataDir / "cube_map.png");
     switch (type) {
     case SingleTriangle: {
         // Load a 3D model with a single triangle
@@ -98,6 +99,15 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
     case Transparency: {
         // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
         auto subMeshes = loadMesh(dataDir / "transparency_scene.obj");
+        std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
+        // === CHANGE THE LIGHTING IF DESIRED ===
+        scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
+        // Spherical light: position, radius, color
+        // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
+    } break;
+    case TransparencyTexture: {
+        // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
+        auto subMeshes = loadMesh(dataDir / "transparent_texture.obj");
         std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
         // === CHANGE THE LIGHTING IF DESIRED ===
         scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });

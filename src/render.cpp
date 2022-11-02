@@ -63,12 +63,21 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         }
 
         if (features.enableTextureMapping && hitInfo.material.kdTexture && !features.enableShading) {
+            if (features.extra.enableTransparency && rayDepth < 10) {
+                Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
+                helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
+                drawRay(ray, hitInfo.material.transparency* acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features) + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1));
+
+
+                return hitInfo.material.transparency * acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features) + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1);
+            }
             return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
         }
 
         if (features.extra.enableTransparency && rayDepth < 10) {
             Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
             helper.origin += helper.direction * std::numeric_limits<float>::epsilon();
+            drawRay(ray, hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1));
 
             return hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1);
         }
@@ -85,6 +94,9 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
 
         return Lo;
     } else {
+        if (features.extra.enableEnvironmentMapping) {
+            return getEnvironmentTexel(*scene.envMap, ray.direction);
+        }
         // Draw a red debug ray if the ray missed.
         drawRay(ray, glm::vec3(1.0f, 0.0f, 0.0f));
         // Set the color of the pixel to black if the ray misses.

@@ -25,6 +25,7 @@ enum SceneType {
     TextureMapping,
     BilinearInterpolation,
     Transparency,
+    TransparencyTexture,
     Custom,
 };
 
@@ -33,6 +34,7 @@ struct Scene {
     std::vector<Mesh> meshes;
     std::vector<Sphere> spheres;
     std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lights;
+    std::shared_ptr<Image> envMap;
 };
 
 // Load a prebuilt scene.
