@@ -100,10 +100,10 @@ const Ray computeReflectionRay(Ray ray, HitInfo hitInfo, const Features& feature
     /*
     * GLOSSY REFLECTIONS
     */
-    if (features.extra.enableGlossyReflection) {
+    if (features.extra.enableGlossyReflection && hitInfo.material.ks != glm::vec3{0.0f}) {
         glm::vec3 cameraToPoint = ray.origin + ray.t * ray.direction;
 
-        float a = 1 / ((hitInfo.material.shininess) * (hitInfo.material.shininess));
+        float a = 1 / (hitInfo.material.shininess);
 
         drawRay({ cameraToPoint, reflectionRay.direction, 0.1f }, { 0.0f, 0.0f, 1.0f });
 
@@ -123,18 +123,25 @@ const Ray computeReflectionRay(Ray ray, HitInfo hitInfo, const Features& feature
 
         glm::vec3 v_vec = glm::normalize(glm::cross(w_vec, u_vec));
 
-        // 2. Create 2 random points in [0,1]:
-        float ran1 = Generator::get(0.0f, 1.0f);
-        float ran2 = Generator::get(0.0f, 1.0f);
+        constexpr int NUM_OF_SAMPLES = 100;
+        glm::vec3 direction {};
 
-        // 3. Calculate vector coefficients:
-        float u = -a / 2 + ran1 * a;
-        float v = -a / 2 + ran2 * a;
+        for (int i = 0; i < NUM_OF_SAMPLES; ++i) {
+            // 2. Create 2 random points in [0,1]:
+            float ran1 = Generator::get(0.0f, 1.0f);
+            float ran2 = Generator::get(0.0f, 1.0f);
 
-        // 4. Replace reflected with a perturbed reflected vector
-        reflectionRay.direction = reflectionRay.direction + u * u_vec + v * v_vec;
+            // 3. Calculate vector coefficients:
+            float u = -a / 2 + ran1 * a;
+            float v = -a / 2 + ran2 * a;
 
-        drawRay({ cameraToPoint, reflectionRay.direction, 0.1f }, { 1.0f, 0.0f, 1.0f });
+            // 4. Replace reflected with a perturbed reflected vector
+            direction += reflectionRay.direction + u * u_vec + v * v_vec;
+        }
+
+        reflectionRay.direction = direction / glm::vec3 { NUM_OF_SAMPLES };
+
+        drawRay({ cameraToPoint, reflectionRay.direction, 0.1f }, { 1.0f, 1.0f, 0.0f });
     }
 
     return reflectionRay;
