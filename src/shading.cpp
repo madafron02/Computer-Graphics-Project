@@ -8,6 +8,8 @@
 
 #include <iostream>
 
+int SAMPLES_NUMBER;
+
 namespace Generator {
     std::mt19937 mt {std::random_device {}()};
 
@@ -102,47 +104,50 @@ const Ray computeReflectionRay(Ray ray, HitInfo hitInfo, const Features& feature
     */
     if (features.extra.enableGlossyReflection && hitInfo.material.ks != glm::vec3{0.0f}) {
         glm::vec3 cameraToPoint = ray.origin + ray.t * ray.direction;
-
-        float a = 1 / (hitInfo.material.shininess);
-
         drawRay({ cameraToPoint, reflectionRay.direction, 0.1f }, { 0.0f, 0.0f, 1.0f });
 
-        // 1. Find the orthonormal basis:
-
-        glm::vec3 w_vec = glm::normalize(reflectionRay.direction);
-        // u_vec is supposed to be not collinear with w: to find it
-        // we set the smallest u_vec component to 1 (2.4.6 book)
-        glm::vec3 u_vec = w_vec;
-        if (u_vec.x < u_vec.y && u_vec.x < u_vec.z)
-            u_vec.x = 1;
-        else if (u_vec.y < u_vec.x && u_vec.y < u_vec.z)
-            u_vec.y = 1;
-        else
-            u_vec.z = 1;
-        u_vec = glm::normalize(u_vec);
-
-        glm::vec3 v_vec = glm::normalize(glm::cross(w_vec, u_vec));
-
-        constexpr int NUM_OF_SAMPLES = 100;
-        glm::vec3 direction {};
-
-        for (int i = 0; i < NUM_OF_SAMPLES; ++i) {
-            // 2. Create 2 random points in [0,1]:
-            float ran1 = Generator::get(0.0f, 1.0f);
-            float ran2 = Generator::get(0.0f, 1.0f);
-
-            // 3. Calculate vector coefficients:
-            float u = -a / 2 + ran1 * a;
-            float v = -a / 2 + ran2 * a;
-
-            // 4. Replace reflected with a perturbed reflected vector
-            direction += reflectionRay.direction + u * u_vec + v * v_vec;
-        }
-
-        reflectionRay.direction = direction / glm::vec3 { NUM_OF_SAMPLES };
-
+        reflectionRay.direction = distortRayDirection(reflectionRay, hitInfo.material.shininess, SAMPLES_NUMBER);
         drawRay({ cameraToPoint, reflectionRay.direction, 0.1f }, { 1.0f, 1.0f, 0.0f });
     }
 
     return reflectionRay;
+}
+
+glm::vec3 distortRayDirection(const Ray& ray, float shininess, int samples)
+{
+    float a = 1 / shininess;
+
+    // 1. Find the orthonormal basis:
+
+    glm::vec3 w_vec = glm::normalize(ray.direction);
+    // u_vec is supposed to be not collinear with w: to find it
+    // we set the smallest u_vec component to 1 (2.4.6 book)
+    glm::vec3 u_vec = w_vec;
+    if (u_vec.x < u_vec.y && u_vec.x < u_vec.z)
+        u_vec.x = 1;
+    else if (u_vec.y < u_vec.x && u_vec.y < u_vec.z)
+        u_vec.y = 1;
+    else
+        u_vec.z = 1;
+    u_vec = glm::normalize(u_vec);
+
+    glm::vec3 v_vec = glm::normalize(glm::cross(w_vec, u_vec));
+
+    glm::vec3 direction {};
+
+    for (int i = 0; i < samples; ++i) {
+        // 2. Create 2 random points in [0,1]:
+        float ran1 = Generator::get(0.0f, 1.0f);
+        float ran2 = Generator::get(0.0f, 1.0f);
+
+        // 3. Calculate vector coefficients:
+        float u = -a / 2 + ran1 * a;
+        float v = -a / 2 + ran2 * a;
+
+        // 4. Add sample to direction
+        direction += ray.direction + u * u_vec + v * v_vec;
+    }
+
+    // 5. Return distorted direction
+    return direction / glm::vec3 { samples };
 }
