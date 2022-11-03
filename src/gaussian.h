@@ -27,7 +27,7 @@ namespace Gaussian {
         return sizes;
     }
 
-    float boxFilterVertical(const Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, int filterSize)
+    void boxFilterVertical(const Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, int filterSize)
     {
         if (filterSize < 1)
             filterSize = 1;
@@ -55,7 +55,7 @@ namespace Gaussian {
         } 
     }
 
-    float boxFilterTotal(const Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, int filterSize)
+    void boxFilterTotal(const Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, int filterSize)
     {
         if (filterSize < 1)
             filterSize = 1;
@@ -76,13 +76,14 @@ namespace Gaussian {
                         }
                     }
 
+                    
                     dest.at(screen.indexAt(i, j))[col] = sum / (2 * filterSize + 1);
                 }
             }
         }
     }
 
-    void boxFilter(Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, int filterSize)
+    void boxFilter(const Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, int filterSize)
     {
         std::vector<glm::vec3> copy(source.size());
 
@@ -92,13 +93,13 @@ namespace Gaussian {
         boxFilterTotal(screen, copy, dest, filterSize);
     }
 
-    void gaussBlur(Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, float sigma)
+    void gaussBlur(const Screen& screen, const std::vector<glm::vec3>& source, std::vector<glm::vec3>& dest, float sigma)
     {       
         auto x = Gaussian::boxesForGauss(sigma, 3);
         std::vector<glm::vec3> pixels1(source.size());
    
         boxFilter(screen, source, dest, x.at(0));
-        //boxFilter(screen, dest, pixels1, x.at(1));
-        //boxFilter(screen, pixels1, dest, x.at(2));
+        boxFilter(screen, dest, pixels1, x.at(1));
+        boxFilter(screen, pixels1, dest, x.at(2));
     }
 }
