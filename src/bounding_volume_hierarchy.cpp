@@ -287,7 +287,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // -> final triangle in green
 
         bool hit = false;
-        float last_primitive_t = -1.0f;
+        float last_primitive_t = MAXFLOAT;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
         std::vector<AxisAlignedBox> notVisited;
         std::vector<AxisAlignedBox> allIntersected;
@@ -372,18 +372,21 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
                         const auto v2 = mesh.vertices[triangle[2]];
 
                         if (intersectRayWithTriangle(v0.position, v1.position, v2.position, ray_copy, hitInfo)) {
-                            last_primitive_t = ray_copy.t;
-                            hitInfo.material = mesh.material;
-                            hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
-                            hit = true;
-                            vf0 = v0;
-                            vf1 = v1;
-                            vf2 = v2;
+                            if(ray_copy.t < last_primitive_t) {
+                                last_primitive_t = ray_copy.t;
+                                vf0 = v0;
+                                vf1 = v1;
+                                vf2 = v2;
 
-                            hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+                                hitInfo.material = mesh.material;
+                                hitInfo.normal = normalize(glm::cross(v1.position - v0.position, v2.position - v0.position));
+                                hit = true;
 
-                            if (features.enableTextureMapping) {
-                                hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                                hitInfo.barycentricCoord = computeBarycentricCoord(v0.position, v1.position, v2.position, ray_copy.origin + ray_copy.t * ray_copy.direction);
+
+                                if (features.enableTextureMapping) {
+                                    hitInfo.texCoord = interpolateTexCoord(v0.texCoord, v1.texCoord, v2.texCoord, hitInfo.barycentricCoord);
+                                }
                             }
                         }
                     }
