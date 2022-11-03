@@ -62,9 +62,6 @@ struct ExtraFeatures {
     bool enableGlossyReflection = false;
     bool enableTransparency = false;
     bool enableDepthOfField = false;
-
-    float bloomEffectThreshold = 0.9f;
-    int bloomEffectBoxFilterSize = 1;
 };
 
 struct Features {
