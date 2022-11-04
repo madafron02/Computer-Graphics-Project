@@ -22,6 +22,10 @@ enum SceneType {
     Teapot,
     Dragon,
     Spheres,
+    TextureMapping,
+    BilinearInterpolation,
+    Transparency,
+    TransparencyTexture,
     Custom,
 };
 
@@ -30,6 +34,8 @@ struct Scene {
     std::vector<Mesh> meshes;
     std::vector<Sphere> spheres;
     std::vector<std::variant<PointLight, SegmentLight, ParallelogramLight>> lights;
+    //Place to upload environment map
+    std::shared_ptr<Image> environmentMap;
 };
 
 // Load a prebuilt scene.

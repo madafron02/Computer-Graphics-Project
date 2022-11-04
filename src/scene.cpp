@@ -6,6 +6,8 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
 {
     Scene scene;
     scene.type = type;
+    //Load environment map
+    scene.environmentMap = std::make_shared<Image>(dataDir / "cube_map.png");
     switch (type) {
     case SingleTriangle: {
         // Load a 3D model with a single triangle
@@ -77,12 +79,48 @@ Scene loadScenePrebuilt(SceneType type, const std::filesystem::path& dataDir)
         scene.spheres.push_back(Sphere { glm::vec3(0.0f, 0.0f, 6.0f), 0.75f, Material { glm::vec3(0.2f, 0.2f, 0.8f) } });
         scene.lights.emplace_back(PointLight { glm::vec3(3, 0, 3), glm::vec3(15) });
     } break;
-    case Custom: {
+    case TextureMapping: {
         // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
-        auto subMeshes = loadMesh(dataDir / "custom.obj");
+        auto subMeshes = loadMesh(dataDir / "meshTextures.obj");
         std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
         // === CHANGE THE LIGHTING IF DESIRED ===
         scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
+        // Spherical light: position, radius, color
+        // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
+    } break;
+    case BilinearInterpolation: {
+        // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
+        auto subMeshes = loadMesh(dataDir / "meshBilinear.obj");
+        std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
+        // === CHANGE THE LIGHTING IF DESIRED ===
+        scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
+        // Spherical light: position, radius, color
+        // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
+    } break;
+    case Transparency: {
+        // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
+        auto subMeshes = loadMesh(dataDir / "transparency_scene.obj");
+        std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
+        // === CHANGE THE LIGHTING IF DESIRED ===
+        scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
+        // Spherical light: position, radius, color
+        // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
+    } break;
+    case TransparencyTexture: {
+        // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
+        auto subMeshes = loadMesh(dataDir / "transparent_texture.obj");
+        std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
+        // === CHANGE THE LIGHTING IF DESIRED ===
+        scene.lights.emplace_back(PointLight { glm::vec3(-1, 1, -1), glm::vec3(1) });
+        // Spherical light: position, radius, color
+        // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
+    } break;
+    case Custom: {
+        // === Replace custom.obj by your own 3D model (or call your 3D model custom.obj) ===
+        auto subMeshes = loadMesh(dataDir / "Antialiasing.obj");
+        std::move(std::begin(subMeshes), std::end(subMeshes), std::back_inserter(scene.meshes));
+        // === CHANGE THE LIGHTING IF DESIRED ===
+        scene.lights.emplace_back(PointLight { glm::vec3(0, 0.5, -0.5), glm::vec3(1) });
         // Spherical light: position, radius, color
         // scene.lights.push_back(SphericalLight{ glm::vec3(0, 1.5f, 0), 0.2f, glm::vec3(1) });
     } break;
