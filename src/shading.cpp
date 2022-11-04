@@ -82,6 +82,7 @@ glm::vec3 distortRayDirection(const Ray& ray, float shininess, int samples)
     float a = 1 / shininess;
 
     // 1. Find the orthonormal basis:
+    // Formula from: "Fundamentals of Computer Graphics" (Steve Marschner & Peter Shirley, 4th edition, 2016)
 
     glm::vec3 w_vec = glm::normalize(ray.direction);
     // u_vec is supposed to be not collinear with w: to find it

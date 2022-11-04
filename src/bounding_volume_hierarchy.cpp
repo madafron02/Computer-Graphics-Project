@@ -18,6 +18,7 @@ int chosenRayDepth = -1;
 BoundingVolumeHierarchy::BoundingVolumeHierarchy(Scene* pScene, const Features& features)
     : m_pScene(pScene)
 {
+    // Reference: Slides Lecture 9 - Acceleration Data Structures
     constexpr int MAX_LEVEL = 6;
     constexpr int MIN_TRIANGLES_IN_LEAF = 6;
 

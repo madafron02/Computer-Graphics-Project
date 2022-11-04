@@ -6,12 +6,12 @@
 #include <glm/vec4.hpp>
 #include <vector>
 
-
+// Reference: https://blog.ivank.net/fastest-gaussian-blur.html
 namespace Gaussian {
 
-    std::vector<int> boxesForGauss(float sigma, int n) // standard deviation, number of boxes
+    std::vector<int> boxesForGauss(float sigma, int n)
     {
-        auto wIdeal = std::sqrt((12 * sigma * sigma / n) + 1); // Ideal averaging filter width
+        auto wIdeal = std::sqrt((12 * sigma * sigma / n) + 1); 
         int wl = floor(wIdeal);
         if (wl % 2 == 0)
             wl--;
@@ -19,7 +19,6 @@ namespace Gaussian {
 
         auto mIdeal = (12 * sigma * sigma - n * wl * wl - 4 * n * wl - 3 * n) / (-4 * wl - 4);
         int m = round(mIdeal);
-        // var sigmaActual = Math.sqrt( (m*wl*wl + (n-m)*wu*wu - n)/12 );
 
         std::vector<int> sizes(n);
         for (auto i = 0; i < n; i++)
