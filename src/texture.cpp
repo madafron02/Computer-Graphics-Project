@@ -69,15 +69,11 @@ glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
     float y_abs = abs(rayDirection.y);
     float z_abs = abs(rayDirection.z);
 
-    float maxDir = std::max(x_abs, std::max(y_abs, z_abs));
+    float furthes = std::max(x_abs, std::max(y_abs, z_abs));
 
-    if (maxDir < 0.00001f) {
-        return glm::vec3(0.0f);
-    }
-
-    float x = rayDirection.x / maxDir;
-    float y = rayDirection.y / maxDir;
-    float z = rayDirection.z / maxDir;
+    float x = rayDirection.x / furthes;
+    float y = rayDirection.y / furthes;
+    float z = rayDirection.z / furthes;
 
     int helper = -1;
 
@@ -124,9 +120,7 @@ glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
     //Width/Height of the face
     float measure = image.width / 4.0f;
 
-    float i;
-    float j;
-
+    float i,j;
 
     //Calculate texel based on the #face we are on
     switch (helper) {
@@ -159,8 +153,8 @@ glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
         j = 0.0f;
     }
 
-    int k = floor(i);
-    int l = floor(j);
+    int x = floor(i);
+    int y = floor(j);
 
-    return image.pixels[image.width * l + k];
+    return image.pixels[image.width * y + x];
 }

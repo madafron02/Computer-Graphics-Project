@@ -86,6 +86,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             return hitInfo.material.transparency * Lo + (1 - hitInfo.material.transparency) * getFinalColor(scene, bvh, helper, features, rayDepth + 1);
         }
 
+        
         if (features.enableRecursive && rayDepth < 6 && (hitInfo.material.ks != glm::vec3 { 0, 0, 0 })) {
             //Ray Tracer - recursive approach
             Ray reflected = computeReflectionRay(ray, hitInfo);
@@ -99,7 +100,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         return Lo;
     } else {
         if (features.extra.enableEnvironmentMapping) {
-            //If ray doesn't intersect any mesh then take the pixel from environemnt map -> craetion of surrounding
+            //If ray doesn't intersect any mesh then take the pixel from environemnt map -> creation of surrounding
             return getEnvironmentTexel(*scene.environmentMap, ray.direction);
         }
         // Draw a red debug ray if the ray missed.
