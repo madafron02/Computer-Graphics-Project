@@ -4,16 +4,20 @@
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
 #include <glm/common.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 DISABLE_WARNINGS_POP()
 #include <algorithm>
 #include <framework/opengl_includes.h>
-#include <string>
 #include <iostream>
+#include <string>
+
+float BLOOM_FILTER_SCALE;
+float BLOOM_FILTER_SIGMA;
+float BLOOM_FILTER_THRESHOLD;
 
 Screen::Screen(const glm::ivec2& resolution, bool presentable)
     : m_presentable(presentable)
@@ -144,18 +148,15 @@ int Screen::indexAt(int x, int y) const
     return (m_resolution.y - 1 - y) * m_resolution.x + x;
 }
 
-void Screen::applyBloomFilter(float threshold, int filterSize)
+void Screen::applyBloomFilter()
 {
-    constexpr int SCALE = 1.2;
-    constexpr float SIGMA = 4;
-
     // m_textureData
     // 1. Threshold values
     std::vector<glm::vec3> pixels(m_textureData.size());
 
     std::transform(std::begin(m_textureData), std::end(m_textureData), std::begin(pixels),
-        [threshold](const glm::vec3& color) {
-            return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : glm::vec3 { 0.0f, 0.0f, 0.0f };
+        [](const glm::vec3& color) {
+            return color.x >= BLOOM_FILTER_THRESHOLD || color.y >= BLOOM_FILTER_THRESHOLD || color.z >= BLOOM_FILTER_THRESHOLD ? color : glm::vec3 { 0.0f, 0.0f, 0.0f };
             //return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : color;
         });
 
@@ -166,13 +167,13 @@ void Screen::applyBloomFilter(float threshold, int filterSize)
     const auto start = clock::now();
 
     std::vector<glm::vec3> withGauss(m_textureData.size());
-    Gaussian::gaussBlur(*this, pixels, withGauss, SIGMA);
+    Gaussian::gaussBlur(*this, pixels, withGauss, BLOOM_FILTER_SIGMA);
     
     const auto end = clock::now();
-    std::cout << "Time to RENDER the FILTER: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds\nAaaaaaghh that's so slow!!!!" << std::endl;
+    std::cout << "Time to RENDER the FILTER: only " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds :)\n" << std::endl;
 
     // 4.  Scale the bloom and add final bloom to the image :)
-    glm::vec3 scaler { SCALE, SCALE, SCALE };
+    glm::vec3 scaler { BLOOM_FILTER_SCALE };
     for (int i = 0; i < m_textureData.size(); ++i) {
         m_textureData.at(i) += withGauss.at(i) * scaler;
     }
