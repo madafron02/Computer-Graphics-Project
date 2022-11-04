@@ -20,7 +20,7 @@ public:
 
     void writeBitmapToFile(const std::filesystem::path& filePath);
     void draw();
-    void applyBloomFilter();
+    void applyBloomFilter(const std::filesystem::path& filePath);
 
     [[nodiscard]] glm::ivec2 resolution() const;
 

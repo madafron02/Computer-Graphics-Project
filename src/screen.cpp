@@ -148,7 +148,7 @@ int Screen::indexAt(int x, int y) const
     return (m_resolution.y - 1 - y) * m_resolution.x + x;
 }
 
-void Screen::applyBloomFilter()
+void Screen::applyBloomFilter(const std::filesystem::path& filePath)
 {
     // m_textureData
     // 1. Threshold values
@@ -160,6 +160,14 @@ void Screen::applyBloomFilter()
             //return color.x >= threshold || color.y >= threshold || color.z >= threshold ? color : color;
         });
 
+    // [+] DEBUG: render thresholded values to an image
+    auto helper = m_textureData;
+    m_textureData = pixels;
+
+    std::filesystem::path debugPath { filePath };
+    writeBitmapToFile(debugPath.replace_filename(filePath.stem().string() + "_debug.bmp"));
+
+    m_textureData = helper;
     // 2. Apply box filter 
 
     //std::vector<glm::vec3> pixels_boxFilter(m_textureData.size());

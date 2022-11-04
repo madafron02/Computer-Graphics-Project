@@ -190,7 +190,7 @@ int main(int argc, char** argv)
                     std::cout << "Time to render image: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
                     // Store the new image.
                     if (config.features.extra.enableBloomEffect)
-                        screen.applyBloomFilter();
+                        screen.applyBloomFilter(outPath);
                     screen.writeBitmapToFile(outPath);
                 }
             }
