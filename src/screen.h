@@ -7,6 +7,10 @@ DISABLE_WARNINGS_POP()
 #include <filesystem>
 #include <vector>
 
+extern float BLOOM_FILTER_SCALE;
+extern float BLOOM_FILTER_SIGMA;
+extern float BLOOM_FILTER_THRESHOLD;
+
 class Screen {
 public:
     Screen(const glm::ivec2& resolution, bool presentable = true);
@@ -16,6 +20,7 @@ public:
 
     void writeBitmapToFile(const std::filesystem::path& filePath);
     void draw();
+    void applyBloomFilter(const std::filesystem::path& filePath);
 
     [[nodiscard]] glm::ivec2 resolution() const;
 
@@ -26,6 +31,8 @@ public:
     [[nodiscard]] std::vector<glm::vec3>& pixels();
 
 private:
+    float boxFilter(const std::vector<glm::vec3>& source, int i, int j, int col, int filterSize);
+
     bool m_presentable;
     glm::ivec2 m_resolution;
     std::vector<glm::vec3> m_textureData;

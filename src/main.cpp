@@ -29,6 +29,7 @@ DISABLE_WARNINGS_POP()
 #include <string>
 #include <thread>
 #include <variant>
+#include <bounding_volume_hierarchy.h>
 
 // This is the main application. The code in here does not need to be modified.
 enum class ViewMode {
@@ -37,6 +38,8 @@ enum class ViewMode {
 };
 
 int debugBVHLeafId = 0;
+//TODO number on the slider
+int debugBVHRecursionLevel = 0;
 
 static void setOpenGLMatrices(const Trackball& camera);
 static void drawLightsOpenGL(const Scene& scene, const Trackball& camera, int selectedLight);
@@ -66,12 +69,13 @@ int main(int argc, char** argv)
         SceneType sceneType { SceneType::SingleTriangle };
         std::optional<Ray> optDebugRay;
         Scene scene = loadScenePrebuilt(sceneType, config.dataPath);
-        BvhInterface bvh { &scene };
+        BvhInterface bvh { &scene, config.features };
 
         int bvhDebugLevel = 0;
         int bvhDebugLeaf = 0;
         bool debugBVHLevel { false };
         bool debugBVHLeaf { false };
+        bool debugBVHIntersected { false };
         ViewMode viewMode { ViewMode::Rasterization };
 
         window.registerKeyCallback([&](int key, int /* scancode */, int action, int /* mods */) {
@@ -84,10 +88,11 @@ int main(int argc, char** argv)
                 } break;
                 case GLFW_KEY_A: {
                     debugBVHLeafId++;
+                    debugBVHRecursionLevel++;
                 } break;
                 case GLFW_KEY_S: {
                     debugBVHLeafId = std::max(0, debugBVHLeafId - 1);
-
+                    debugBVHRecursionLevel = std::max(0, debugBVHRecursionLevel - 1);
                 } break;
                 case GLFW_KEY_ESCAPE: {
                     window.close();
@@ -117,13 +122,14 @@ int main(int argc, char** argv)
                     "Bilinear Interpolation",
                     "Transparency",
                     "Glossy Reflections",
+                    "Transparency - Texture",
                     "Custom",
                 };
                 if (ImGui::Combo("Scenes", reinterpret_cast<int*>(&sceneType), items.data(), int(items.size()))) {
                     optDebugRay.reset();
                     scene = loadScenePrebuilt(sceneType, config.dataPath);
                     selectedLightIdx = scene.lights.empty() ? -1 : 0;
-                    bvh = BvhInterface(&scene);
+                    bvh = BvhInterface(&scene, config.features);
                     if (optDebugRay) {
                         HitInfo dummy {};
                         bvh.intersect(*optDebugRay, dummy, config.features);
@@ -151,6 +157,12 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Environment mapping", &config.features.extra.enableEnvironmentMapping);
                 ImGui::Checkbox("BVH SAH binning", &config.features.extra.enableBvhSahBinning);
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
+                if (config.features.extra.enableBloomEffect) {
+                    ImGui::SliderFloat("Bloom effect threshold", &BLOOM_FILTER_THRESHOLD, 0.0, 1.0, "%.2f");
+                    ImGui::SliderFloat("Bloom effect scale", &BLOOM_FILTER_SCALE, 1.0, 3.0, "%.1f");
+                    ImGui::SliderFloat("Bloom effect sigma", &BLOOM_FILTER_SIGMA, 1.0, 10.0, "%.1f");
+                }
+                ImGui::Checkbox("Anti-aliasing with irregular sampling per pixel", &config.features.extra.enableMultipleRaysPerPixel);
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
@@ -159,6 +171,10 @@ int main(int argc, char** argv)
                 }
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
+                if (config.features.extra.enableDepthOfField) {
+                    ImGui::SliderFloat("Aperture", &aperture, 0, 0.15f, "%f", 0);
+                    ImGui::SliderFloat("Focal length", &focalLength, 0.5f, 5.0f, "%f", 0);
+                }
             }
             ImGui::Separator();
 
@@ -192,6 +208,8 @@ int main(int argc, char** argv)
                     const auto end = clock::now();
                     std::cout << "Time to render image: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
                     // Store the new image.
+                    if (config.features.extra.enableBloomEffect)
+                        screen.applyBloomFilter(outPath);
                     screen.writeBitmapToFile(outPath);
                 }
             }
@@ -206,6 +224,9 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Draw BVH Leaf", &debugBVHLeaf);
                 if (debugBVHLeaf)
                     ImGui::SliderInt("BVH Leaf", &bvhDebugLeaf, 1, bvh.numLeaves());
+                ImGui::Checkbox("Draw BVH nodes intersected at separate recursion steps", &debugBVHIntersected);
+                if (debugBVHIntersected)
+                    ImGui::SliderInt("Recursion Level", &debugBVHRecursionLevel, 0, 6);
             }
 
             ImGui::Spacing();
@@ -332,6 +353,10 @@ int main(int argc, char** argv)
                     enableDebugDraw = true;
                     glDisable(GL_LIGHTING);
                     glDepthFunc(GL_LEQUAL);
+                    debugIntersected = false;
+                    if(debugBVHIntersected) {
+                        chosenRayDepth = debugBVHRecursionLevel;
+                    }
                     (void)getFinalColor(scene, bvh, *optDebugRay, config.features);
                     enableDebugDraw = false;
                 }
@@ -395,7 +420,7 @@ int main(int argc, char** argv)
                        }),
             config.scene);
 
-        BvhInterface bvh { &scene };
+        BvhInterface bvh { &scene, config.features };
 
         using clock = std::chrono::high_resolution_clock;
         // Create output directory if it does not exist.

@@ -27,4 +27,3 @@ void drawMesh(const Mesh& mesh);
 void drawSphere(const Sphere& sphere);
 void drawSphere(const glm::vec3& center, float radius, const glm::vec3& color = glm::vec3(1.0f));
 void drawScene(const Scene& scene);
-

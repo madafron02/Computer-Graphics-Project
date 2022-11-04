@@ -68,6 +68,10 @@ static std::ostream& operator<<(std::ostream& os, const SceneType& sceneType)
         os << "SceneType::GlossyReflections";
         break;
     }
+    case SceneType::TransparencyTexture: {
+        os << "SceneType::TransparencyTexture";
+        break;
+    }                               
     case SceneType::Custom: {
         os << "SceneType::Custom";
         break;
@@ -418,6 +422,8 @@ std::string serialize(const SceneType& sceneType)
         return "transparency";
     case SceneType::GlossyReflections:
         return "glossy_reflections";
+    case SceneType::TransparencyTexture:
+        return "transparency_texture";
     case SceneType::Custom:
         return "custom";
     default:
@@ -455,6 +461,8 @@ std::optional<SceneType> deserialize(const std::string& sceneTypeStr)
         return SceneType::Transparency;
     } else if (lowered == "glossy_reflections" || lowered == "glossyreflections" || lowered == "glossy-reflections") {
         return SceneType::GlossyReflections;
+    } else if (lowered == "transparency_texture" || lowered == "transparencytexture" || lowered == "transparency-texture") {
+        return SceneType::TransparencyTexture;
     } else if (lowered == "custom") {
         return SceneType::Custom;
     } else {
