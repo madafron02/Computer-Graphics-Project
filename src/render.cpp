@@ -89,10 +89,9 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
         
         if (features.enableRecursive && rayDepth < 6 && (hitInfo.material.ks != glm::vec3 { 0, 0, 0 })) {
             //Ray Tracer - recursive approach
-            Ray reflected = computeReflectionRay(ray, hitInfo);
+            Ray reflected = computeReflectionRay(ray, hitInfo, features);
             reflected.origin += reflected.direction * std::numeric_limits<float>::epsilon();
             glm::vec3 reflectColor = getFinalColor(scene, bvh, reflected, features, rayDepth + 1);
-
 
             return Lo + reflectColor;
         }
