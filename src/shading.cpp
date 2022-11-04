@@ -3,6 +3,9 @@
 #include <glm/geometric.hpp>
 #include <shading.h>
 
+
+//Diffuse and specular component calulated based on the formula from from “Fundamentals of Computer Graphics” Chapter 4.5 Ray Tracing - Shading
+//L = kd I max(0, n · l) + ks I max(0, n · h) ^ p 
 const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& lightColor, const Features& features, Ray ray, HitInfo hitInfo)
 {
 
@@ -36,6 +39,9 @@ const glm::vec3 computeShading(const glm::vec3& lightPosition, const glm::vec3& 
     return diffuse + specular;
 }
 
+
+//Formula from additional material video about reflection ray
+//https://brightspace.tudelft.nl/d2l/le/content/499418/viewContent/3010973/View
 const Ray computeReflectionRay(Ray ray, HitInfo hitInfo)
 {
     Ray reflectionRay = ray;

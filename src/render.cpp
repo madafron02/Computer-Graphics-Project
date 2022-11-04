@@ -76,6 +76,7 @@ glm::vec3 getFinalColor(const Scene& scene, const BvhInterface& bvh, Ray ray, co
             return acquireTexel(*hitInfo.material.kdTexture, hitInfo.texCoord, features);
         }
 
+        // Idea taken from https://en.wikipedia.org/wiki/Alpha_compositing
         if (features.extra.enableTransparency && rayDepth < 10) {
             //Transparency
             Ray helper = Ray { ray.origin + ray.direction * ray.t, ray.direction };
@@ -148,6 +149,8 @@ glm::vec3 getPixelColorDOF(Ray cameraRay, const Scene &scene, const BvhInterface
     return finalColor /= 20.0f;
 }
 
+
+// Idea taken from "Fundamentals of computer graphics" Chapter 13.4.1
 void renderRayTracing(const Scene& scene, const Trackball& camera, const BvhInterface& bvh, Screen& screen, const Features& features)
 {
     glm::ivec2 windowResolution = screen.resolution();

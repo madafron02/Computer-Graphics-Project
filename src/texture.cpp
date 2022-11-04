@@ -4,10 +4,11 @@
 #include <iostream>
 
 // Method for getting textures if only texture mapping is enabled
+// Method from lecture slides 2
 int getIndex(Image image, const glm::vec2& coord)
 {
-    int x = (int)(coord.x * image.width - 0.5);
-    int y = (int)((1 - coord.y) * image.height - 0.5);
+    int x = (int)(coord.x * image.width);
+    int y = (int)((1 - coord.y) * image.height);
 
     auto index = y * image.width + x;
     return index;
@@ -21,6 +22,7 @@ int bilinearIndex(Image image, int x, int y)
     return bilinearY * image.width + bilinearX;
 }
 
+//Method taken from "Fundamentals of Computer Graphics" Chapter 11.3.2
 glm::vec3 bilinearInterpolation(Image image, const glm::vec2 texCoord)
 {
     // Compute indexes
@@ -60,6 +62,7 @@ glm::vec3 acquireTexel(const Image& image, const glm::vec2& texCoord, const Feat
 }
 
 // Get color from the cube_map (for the surrounding)
+// https://developer.download.nvidia.com/CgTutorial/cg_tutorial_chapter07.html only part of it  7.1
 glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
 {
     float x_abs = abs(rayDirection.x);

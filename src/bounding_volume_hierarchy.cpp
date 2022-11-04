@@ -227,6 +227,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
     // If BVH is not enabled, use the naive implementation.
     if (!features.enableAccelStructure) {
         bool hit = false;
+
         // Intersect with all triangles of all meshes.
         for (const auto& mesh : m_pScene->meshes) {
             for (const auto& tri : mesh.triangles) {

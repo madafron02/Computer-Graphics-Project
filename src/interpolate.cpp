@@ -1,6 +1,8 @@
 #include "interpolate.h"
 #include <glm/geometric.hpp>
 
+
+//Method taken from slides lecture 6
 glm::vec3 computeBarycentricCoord(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& p)
 {
     //Compute total area of the triangle and three smaller ones inside it
