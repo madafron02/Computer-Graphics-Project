@@ -153,8 +153,8 @@ glm::vec3 getEnvironmentTexel(const Image& image, const glm::vec3& rayDirection)
         j = 0.0f;
     }
 
-    int x = floor(i);
-    int y = floor(j);
+    int horizontal = floor(i);
+    int vertical = floor(j);
 
-    return image.pixels[image.width * y + x];
+    return image.pixels[image.width * vertical + horizontal];
 }
