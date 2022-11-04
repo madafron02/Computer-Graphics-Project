@@ -114,5 +114,5 @@ glm::vec3 distortRayDirection(const Ray& ray, float shininess, int samples)
     }
 
     // 5. Return distorted direction
-    return direction / glm::vec3 { (float)samples };
+    return ray.direction + (direction / glm::vec3 { (float)samples });
 }
