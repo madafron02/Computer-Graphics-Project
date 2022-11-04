@@ -3,6 +3,7 @@
 #include "light.h"
 #include "render.h"
 #include "screen.h"
+#include "shading.h"
 // Suppress warnings in third-party code.
 #include <framework/disable_all_warnings.h>
 DISABLE_WARNINGS_PUSH()
@@ -120,6 +121,7 @@ int main(int argc, char** argv)
                     "Texture Mapping",
                     "Bilinear Interpolation",
                     "Transparency",
+                    "Glossy Reflections",
                     "Transparency - Texture",
                     "Custom",
                 };
@@ -164,6 +166,9 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
                 ImGui::Checkbox("Glossy reflections", &config.features.extra.enableGlossyReflection);
+                if (config.features.extra.enableGlossyReflection) {
+                    ImGui::SliderInt("Number of samples", &SAMPLES_NUMBER, 1, 1000);
+                }
                 ImGui::Checkbox("Transparency", &config.features.extra.enableTransparency);
                 ImGui::Checkbox("Depth of field", &config.features.extra.enableDepthOfField);
                 if (config.features.extra.enableDepthOfField) {
