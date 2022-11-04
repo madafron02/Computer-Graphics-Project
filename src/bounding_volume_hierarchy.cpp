@@ -288,7 +288,7 @@ bool BoundingVolumeHierarchy::intersect(Ray& ray, HitInfo& hitInfo, const Featur
         // -> final triangle in green
 
         bool hit = false;
-        float last_primitive_t = MAXFLOAT;
+        float last_primitive_t = FLT_MAX;
         std::priority_queue<pair, std::vector<pair>, Comparator> intersections;
         std::vector<AxisAlignedBox> notVisited;
         std::vector<AxisAlignedBox> allIntersected;

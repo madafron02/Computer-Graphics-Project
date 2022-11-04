@@ -155,6 +155,11 @@ int main(int argc, char** argv)
                 ImGui::Checkbox("Environment mapping", &config.features.extra.enableEnvironmentMapping);
                 ImGui::Checkbox("BVH SAH binning", &config.features.extra.enableBvhSahBinning);
                 ImGui::Checkbox("Bloom effect", &config.features.extra.enableBloomEffect);
+                if (config.features.extra.enableBloomEffect) {
+                    ImGui::SliderFloat("Bloom effect threshold", &BLOOM_FILTER_THRESHOLD, 0.0, 1.0, "%.2f");
+                    ImGui::SliderFloat("Bloom effect scale", &BLOOM_FILTER_SCALE, 1.0, 3.0, "%.1f");
+                    ImGui::SliderFloat("Bloom effect sigma", &BLOOM_FILTER_SIGMA, 1.0, 10.0, "%.1f");
+                }
                 ImGui::Checkbox("Anti-aliasing with irregular sampling per pixel", &config.features.extra.enableMultipleRaysPerPixel);
                 ImGui::Checkbox("Texture filtering(bilinear interpolation)", &config.features.extra.enableBilinearTextureFiltering);
                 ImGui::Checkbox("Texture filtering(mipmapping)", &config.features.extra.enableMipmapTextureFiltering);
@@ -198,6 +203,8 @@ int main(int argc, char** argv)
                     const auto end = clock::now();
                     std::cout << "Time to render image: " << std::chrono::duration<float, std::milli>(end - start).count() << " milliseconds" << std::endl;
                     // Store the new image.
+                    if (config.features.extra.enableBloomEffect)
+                        screen.applyBloomFilter(outPath);
                     screen.writeBitmapToFile(outPath);
                 }
             }
